@@ -1,0 +1,22 @@
+
+TODO
+
+- start demo instance
+- demo cluster
+- DB and demo pointing at DB
+- MSG and demo pointing at MSG
+- demo cluster with DB cluster and MSG
+- externalised data sources (even for random)
+- elastic calc nodes
+
+
+Useful references:
+
+http://forums.opengamma.com/
+http://docs.opengamma.com/display/DOC/Component-based+Configuration
+http://docs.opengamma.com/display/DOC090/Adding+Remote+Calculation+Nodes
+     
+Repos:
+     
+https://github.com/opengamma/OG-Platform
+
