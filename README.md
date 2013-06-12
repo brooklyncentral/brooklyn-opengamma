@@ -3,6 +3,7 @@ brooklyn-opengamma
 
 Brooklyn deployment and management of the OpenGamma financial analytics platform (opengamma.com)
 
+For screenshots, see: https://github.com/cloudsoft/brooklyn-opengamma/tree/master/docs/screenshots/
 
 ### Setup 1:  Dependencies
 
