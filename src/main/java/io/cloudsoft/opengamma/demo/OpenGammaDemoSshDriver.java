@@ -4,6 +4,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
+import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
@@ -42,6 +43,14 @@ public class OpenGammaDemoSshDriver extends AbstractSoftwareProcessSshDriver imp
             .updateTaskAndFailOnNonZeroResultCode()
                 .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName("opengamma")+" "+"opengamma")
                 .body.append("cd opengamma")
+                .body.append(String.format("sed -i.bk" +
+                        " \"s/jetty.port = 8080/jetty.port = %s/\""+ 
+                        " config/fullstack/fullstack-example.properties",
+                        entity.getAttribute(Attributes.HTTP_PORT)))
+                .body.append(String.format("sed -i.bk" +
+                        " \"s/61616/%s/\""+ 
+                        " config/fullstack/fullstack-example.properties",
+                        entity.getAttribute(OpenGammaDemoServer.EMBEDDED_MESSAGING_PORT)))
                 .body.append("scripts/init-og-examples-db.sh")
                 .execute();
         
@@ -51,6 +60,8 @@ public class OpenGammaDemoSshDriver extends AbstractSoftwareProcessSshDriver imp
     @Override
     public void launch() {
         String mode = getEntity().getConfig(OpenGammaDemoServer.DEBUG_MODE) ? "debug" : "start";
+//        EXTRA_JVM_OPTS
+        
         newScript(MutableMap.of("usePidFile", true), LAUNCHING).
             updateTaskAndFailOnNonZeroResultCode().
             body.append("cd opengamma", 

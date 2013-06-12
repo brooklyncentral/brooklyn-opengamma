@@ -1,10 +1,7 @@
 package io.cloudsoft.opengamma;
 
-import static brooklyn.event.basic.DependentConfiguration.attributeWhenReady;
-import static brooklyn.event.basic.DependentConfiguration.formatString;
 import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -17,24 +14,17 @@ import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.StartableApplication;
-import brooklyn.entity.database.mysql.MySqlNode;
-import brooklyn.entity.group.DynamicCluster;
-import brooklyn.entity.java.JavaEntityMethods;
 import brooklyn.entity.proxying.EntitySpecs;
-import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
 import brooklyn.entity.webapp.DynamicWebAppCluster;
-import brooklyn.entity.webapp.JavaWebAppService;
-import brooklyn.entity.webapp.WebAppService;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.launcher.BrooklynLauncher;
-import brooklyn.location.basic.PortRanges;
 import brooklyn.util.CommandLineUtil;
 
 import com.google.common.collect.Lists;
 
-public class OpenGammaCluster extends AbstractApplication implements StartableApplication {
+public class OpenGammaSingleServer extends AbstractApplication implements StartableApplication {
     
-    public static final Logger LOG = LoggerFactory.getLogger(OpenGammaCluster.class);
+    public static final Logger LOG = LoggerFactory.getLogger(OpenGammaSingleServer.class);
     
     public static final String DEFAULT_LOCATION = "localhost";
 
@@ -43,15 +33,9 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
 
     @Override
     public void init() {
-//        OpenGammaDemoServer web = addChild(
-//                EntitySpecs.spec(OpenGammaDemoServer.class) );
-        
-        ControlledDynamicWebAppCluster web = addChild(
-                EntitySpecs.spec(ControlledDynamicWebAppCluster.class)
-                    .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
-                    .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, EntitySpecs.spec(OpenGammaDemoServer.class))
-                );
-        
+        OpenGammaDemoServer web = addChild(
+                EntitySpecs.spec(OpenGammaDemoServer.class) );
+
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(web,  
                 WebAppServiceConstants.ROOT_URL,
                 DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW,
@@ -64,7 +48,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
-                 .application(EntitySpecs.appSpec(OpenGammaCluster.class)
+                 .application(EntitySpecs.appSpec(OpenGammaSingleServer.class)
                          .displayName("OpenGamma Cluster Example"))
                  .webconsolePort(port)
                  .location(location)
