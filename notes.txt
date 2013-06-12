@@ -13,8 +13,11 @@ TODO
 Useful references:
 
 http://forums.opengamma.com/
+http://docs.opengamma.com/
+http://docs-static.opengamma.com/1.2.0/java/javadocs/
+
 http://docs.opengamma.com/display/DOC/Component-based+Configuration
-http://docs.opengamma.com/display/DOC090/Adding+Remote+Calculation+Nodes
+(old) http://docs.opengamma.com/display/DOC090/Adding+Remote+Calculation+Nodes
      
 Repos:
      
