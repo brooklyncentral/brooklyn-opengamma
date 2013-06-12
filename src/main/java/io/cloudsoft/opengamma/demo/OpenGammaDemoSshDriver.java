@@ -2,17 +2,18 @@ package io.cloudsoft.opengamma.demo;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
-import brooklyn.entity.basic.AbstractSoftwareProcessSshDriver;
 import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
+import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.util.MutableMap;
 import brooklyn.util.ssh.CommonCommands;
 
-public class OpenGammaDemoSshDriver extends AbstractSoftwareProcessSshDriver implements OpenGammaDemoDriver {
+public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
 
     public OpenGammaDemoSshDriver(EntityLocal entity, SshMachineLocation machine) {
         super(entity, machine);
@@ -60,8 +61,6 @@ public class OpenGammaDemoSshDriver extends AbstractSoftwareProcessSshDriver imp
     @Override
     public void launch() {
         String mode = getEntity().getConfig(OpenGammaDemoServer.DEBUG_MODE) ? "debug" : "start";
-//        EXTRA_JVM_OPTS
-        
         newScript(MutableMap.of("usePidFile", true), LAUNCHING).
             updateTaskAndFailOnNonZeroResultCode().
             body.append("cd opengamma", 
@@ -85,5 +84,20 @@ public class OpenGammaDemoSshDriver extends AbstractSoftwareProcessSshDriver imp
         newScript(MutableMap.of("usePidFile", true), KILLING).execute();
     }
 
+    @Override
+    protected String getLogFileLocation() {
+        return null;
+    }
 
+    @Override
+    public Map<String, String> getShellEnvironment() {
+        Map<String,String> env = super.getShellEnvironment();
+        
+        // rename JAVA_OPTS to what OG scripts expect
+        String jopts = env.remove("JAVA_OPTS");
+        if (jopts!=null) env.put("EXTRA_JVM_OPTS", jopts);
+        
+        return env;
+    }
+    
 }

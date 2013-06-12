@@ -54,20 +54,19 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
         jettyStatsHandler.attribute("requestTimeTotal").subscribe(TOTAL_PROCESSING_TIME);
         jettyStatsHandler.attribute("responsesBytesTotal").subscribe(BYTES_SENT);
 
-        // suppressed for now because we aren't able to connect JMX
-//        // If MBean is unreachable, then mark as service-down
-//        jettyStatsHandler.reachable().poll(new Function<Boolean,Void>() {
-//                @Override public Void apply(Boolean input) {
-//                    if (input != null && Boolean.FALSE.equals(input)) {
-//                        Boolean prev = setAttribute(SERVICE_UP, false);
-//                        if (Boolean.TRUE.equals(prev)) {
-//                            LOG.warn("Could not reach {} over JMX, marking service-down", OpenGammaDemoServerImpl.this);
-//                        } else {
-//                            if (LOG.isDebugEnabled()) LOG.debug("Could not reach {} over JMX, service-up was previously {}", OpenGammaDemoServerImpl.this, prev);
-//                        }
-//                    }
-//                    return null;
-//                }});
+        // If MBean is unreachable, then mark as service-down
+        jettyStatsHandler.reachable().poll(new Function<Boolean,Void>() {
+                @Override public Void apply(Boolean input) {
+                    if (input != null && Boolean.FALSE.equals(input)) {
+                        Boolean prev = setAttribute(SERVICE_UP, false);
+                        if (Boolean.TRUE.equals(prev)) {
+                            LOG.warn("Could not reach {} over JMX, marking service-down", OpenGammaDemoServerImpl.this);
+                        } else {
+                            if (LOG.isDebugEnabled()) LOG.debug("Could not reach {} over JMX, service-up was previously {}", OpenGammaDemoServerImpl.this, prev);
+                        }
+                    }
+                    return null;
+                }});
 
         JavaAppUtils.connectMXBeanSensors(this, jmx);
     }
