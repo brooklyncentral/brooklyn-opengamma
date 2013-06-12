@@ -2,6 +2,7 @@ package io.cloudsoft.opengamma.demo;
 
 import java.util.Map;
 
+import brooklyn.enricher.RollingTimeWindowMeanEnricher;
 import brooklyn.entity.basic.SoftwareProcessImpl;
 import brooklyn.entity.java.JavaAppUtils;
 import brooklyn.entity.java.UsesJmx;
@@ -48,14 +49,29 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
         Map flags = MutableMap.of("period", 5000);
         JmxSensorAdapter jmx = sensorRegistry.register(new JmxSensorAdapter(flags));
 
+        JavaAppUtils.connectMXBeanSensors(this, jmx);
+        
+        // jetty JMX not enabled
         JmxObjectNameAdapter jettyStatsHandler = jmx.objectName("org.eclipse.jetty.server.handler:type=statisticshandler,id=0");
         jettyStatsHandler.attribute("running").subscribe(SERVICE_UP);
         jettyStatsHandler.attribute("requests").subscribe(REQUEST_COUNT);
         jettyStatsHandler.attribute("requestTimeTotal").subscribe(TOTAL_PROCESSING_TIME);
         jettyStatsHandler.attribute("responsesBytesTotal").subscribe(BYTES_SENT);
 
+        JmxObjectNameAdapter opengammaViewHandler = jmx.objectName("com.opengamma:type=ViewProcessor,name=ViewProcessor main");
+        opengammaViewHandler.attribute("NumberOfViewProcesses").subscribe(VIEW_PROCESSES_COUNT);
+        
+        JmxObjectNameAdapter opengammaCalcHandler = jmx.objectName("com.opengamma:type=CalculationNodes,name=local");
+        opengammaCalcHandler.attribute("TotalJobCount").subscribe(CALC_JOB_COUNT);
+        opengammaCalcHandler.attribute("TotalNodeCount").subscribe(CALC_NODE_COUNT);
+
+        // job count is some temporal measure already
+//        addEnricher(new RollingTimeWindowMeanEnricher<Double>(this,
+//                CALC_JOB_COUNT, CALC_JOB_RATE,
+//                60*1000));
+        
         // If MBean is unreachable, then mark as service-down
-        jettyStatsHandler.reachable().poll(new Function<Boolean,Void>() {
+        opengammaViewHandler.reachable().poll(new Function<Boolean,Void>() {
                 @Override public Void apply(Boolean input) {
                     if (input != null && Boolean.FALSE.equals(input)) {
                         Boolean prev = setAttribute(SERVICE_UP, false);
@@ -67,8 +83,6 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
                     }
                     return null;
                 }});
-
-        JavaAppUtils.connectMXBeanSensors(this, jmx);
     }
     
     @Override
