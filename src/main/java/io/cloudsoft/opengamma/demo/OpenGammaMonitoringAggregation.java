@@ -13,22 +13,22 @@ import com.google.common.collect.ImmutableList;
 
 public class OpenGammaMonitoringAggregation {
 
-    public static final BasicAttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST = OpenGammaDemoServer.PROCESSING_TIME_PER_SECOND_LAST;
-    public static final BasicAttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW = OpenGammaDemoServer.PROCESSING_TIME_PER_SECOND_IN_WINDOW;
-    public static final BasicAttributeSensor<Integer> VIEW_PROCESSES_COUNT = OpenGammaDemoServer.VIEW_PROCESSES_COUNT;
+    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST = OpenGammaDemoServer.PROCESSING_TIME_PER_SECOND_LAST;
+    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW = OpenGammaDemoServer.PROCESSING_TIME_PER_SECOND_IN_WINDOW;
+    public static final AttributeSensor<Integer> VIEW_PROCESSES_COUNT = OpenGammaDemoServer.VIEW_PROCESSES_COUNT;
     
-    public static final BasicAttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST_PER_NODE =
+    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "webapp.reqs.processingTime.perSec.last.perNode", "Mean across cluster of percentage of time spent processing requests (most recent period; cf CPU utilisation)");
 
-    public static final BasicAttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW_PER_NODE =
+    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "webapp.reqs.processingTime.perSec.windowed.perNode", "Mean across cluster of percentage of time spent processing requests (windowed over time period)");
 
-    public static final BasicAttributeSensor<Double> VIEW_PROCESSES_COUNT_PER_NODE =
+    public static final AttributeSensor<Double> VIEW_PROCESSES_COUNT_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "opengamma.views.processes.active.count.perNode", "Mean across cluster of number of active view processes");
 
-    public static final BasicAttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW = UsesJavaMXBeans.AVG_PROCESS_CPU_TIME_FRACTION;
+    public static final AttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW = UsesJavaMXBeans.AVG_PROCESS_CPU_TIME_FRACTION;
     
-    public static final BasicAttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW_PER_NODE =
+    public static final AttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "java.metrics.processCpuTime.fraction.avg.per.node", "Mean across cluster of the fraction of time (since the last event) consumed as cpu time");
 
     public static void aggregateOpenGammaServerSensors(Entity cluster) {
