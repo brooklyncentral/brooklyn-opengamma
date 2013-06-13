@@ -2,6 +2,9 @@ package io.cloudsoft.opengamma;
 
 import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
 import io.cloudsoft.opengamma.demo.OpenGammaMonitoringAggregation;
+import io.cloudsoft.opengamma.policy.ServiceFailureDetector;
+import io.cloudsoft.opengamma.policy.ServiceReplacer;
+import io.cloudsoft.opengamma.policy.ServiceRestarter;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -13,15 +16,19 @@ import brooklyn.catalog.CatalogConfig;
 import brooklyn.config.ConfigKey;
 import brooklyn.enricher.HttpLatencyDetector;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
+import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.Entities;
+import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.StartableApplication;
+import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
 import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppService;
 import brooklyn.entity.webapp.WebAppServiceConstants;
-import brooklyn.event.basic.BasicAttributeSensor;
+import brooklyn.event.SensorEvent;
+import brooklyn.event.SensorEventListener;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.util.CommandLineUtil;
 
@@ -36,6 +43,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     @CatalogConfig(label="Debug Mode", priority=2)
     public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaDemoServer.DEBUG_MODE;
 
+    /** build the application */
     @Override
     public void init() {
         ControlledDynamicWebAppCluster web = addChild(
@@ -46,20 +54,46 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
                     .displayName("OpenGamma Server Cluster (Web/View/Calc)")
                 );
         
+        initAggregatingMetrics(web);
+        initResilience(web);
+        
+    }
+
+    /** aggregate metrics and selected KPI's */
+    protected void initAggregatingMetrics(ControlledDynamicWebAppCluster web) {
         web.addEnricher(HttpLatencyDetector.builder().
                 url(WebAppService.ROOT_URL).
                 rollup(10, TimeUnit.SECONDS).
                 build());
-
         OpenGammaMonitoringAggregation.aggregateOpenGammaServerSensors(web.getCluster());
-
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(web,  
                 WebAppServiceConstants.ROOT_URL,
                 DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW,
                 HttpLatencyDetector.REQUEST_LATENCY_IN_SECONDS_IN_WINDOW,
                 OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT_PER_NODE));
     }
-    
+
+
+    /** this attaches a policy at each OG Server listening for ENTITY_FAILED,
+     * attempting to _restart_ the process, and 
+     * failing that attempting to _replace_ the entity (e.g. a new VM), and 
+     * failing that setting the cluster "on-fire" */
+    protected void initResilience(ControlledDynamicWebAppCluster web) {
+        subscribe(web.getCluster(), DynamicCluster.MEMBER_ADDED, new SensorEventListener<Entity>() {
+            @Override
+            public void onEvent(SensorEvent<Entity> addition) {
+                initSoftwareProcess((SoftwareProcess)addition.getValue());
+            }
+        });
+        web.getCluster().addPolicy(new ServiceReplacer(ServiceRestarter.ENTITY_RESTART_FAILED));
+    }
+
+    /** invoked whenever a new OpenGamma server is added (the server may not be started yet) */
+    protected void initSoftwareProcess(SoftwareProcess p) {
+        p.addPolicy(new ServiceFailureDetector());
+        p.addPolicy(new ServiceRestarter(ServiceFailureDetector.ENTITY_FAILED));
+    }
+
     public static void main(String[] argv) {
         List<String> args = Lists.newArrayList(argv);
         String port =  CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
