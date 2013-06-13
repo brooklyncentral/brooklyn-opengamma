@@ -1,13 +1,12 @@
 package io.cloudsoft.opengamma.demo;
 
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import brooklyn.BrooklynVersion;
-import brooklyn.entity.basic.Attributes;
-import brooklyn.entity.basic.EntityInternal;
+import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
 import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
@@ -17,7 +16,15 @@ import brooklyn.util.ResourceUtils;
 import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.CommonCommands;
 
+import com.google.common.collect.ImmutableList;
+
 public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
+
+    private static final String OPENGAMMA_SUBDIR = "opengamma";
+    private static final String SCRIPT_SUBDIR = OPENGAMMA_SUBDIR + "/scripts";
+    private static final String CONFIG_SUBDIR = OPENGAMMA_SUBDIR + "/config";
+    private static final String COMMON_SUBDIR = CONFIG_SUBDIR + "/common";
+    private static final String BROOKLYN_SUBDIR = CONFIG_SUBDIR + "/brooklyn";
 
     public OpenGammaDemoSshDriver(EntityLocal entity, SshMachineLocation machine) {
         super(entity, machine);
@@ -25,47 +32,62 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     @Override
     public void install() {
-        DownloadResolver resolver = ((EntityInternal)entity).getManagementContext().getEntityDownloadsManager().newDownloader(this);
+        DownloadResolver resolver = Entities.newDownloader(this);
         List<String> urls = resolver.getTargets();
         String saveAs = resolver.getFilename();
-        
-        List<String> commands = new LinkedList<String>();
-        commands.addAll(CommonCommands.downloadUrlAs(urls, saveAs));
-        commands.add(CommonCommands.INSTALL_TAR);
-        commands.add("tar xvfz "+saveAs);
 
-        newScript(INSTALLING).
-                updateTaskAndFailOnNonZeroResultCode().
-                body.append(commands).execute();
+        List<String> commands = ImmutableList.<String>builder()
+                .addAll(CommonCommands.downloadUrlAs(urls, saveAs))
+                .add(CommonCommands.INSTALL_TAR)
+                .add("tar xvfz "+saveAs)
+                .build();
+
+        newScript(INSTALLING)
+                .updateTaskAndFailOnNonZeroResultCode()
+                .body.append(commands).execute();
     }
 
     @Override
     public void customize() {
         installJava();
         
-        DownloadResolver resolver = ((EntityInternal)entity).getManagementContext().getEntityDownloadsManager().newDownloader(this);
-        final String COMMON_SUBDIR = "opengamma/config/common";
+        DownloadResolver resolver = Entities.newDownloader(this);
         // Copy the install files to the run-dir
         newScript(CUSTOMIZING)
             .updateTaskAndFailOnNonZeroResultCode()
-                .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName("opengamma")+" "+"opengamma")
-                // create the dir where we will put new JMX config
-                .body.append("mkdir -p "+COMMON_SUBDIR)
-                .body.append("cd opengamma")
-                // amend the ports in the properties file
-                .body.append(String.format("sed -i.bk" +
-                        " \"s/jetty.port = 8080/jetty.port = %s/\""+ 
-                        " config/fullstack/fullstack-example.properties",
-                        entity.getAttribute(Attributes.HTTP_PORT)))
-                .body.append(String.format("sed -i.bk" +
-                        " \"s/61616/%s/\""+ 
-                        " config/fullstack/fullstack-example.properties",
-                        entity.getAttribute(OpenGammaDemoServer.EMBEDDED_MESSAGING_PORT)))
-                .body.append("scripts/init-og-examples-db.sh")
+            .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName("opengamma")+" "+"opengamma")
+            // create the dirs where we will put config files
+            .body.append("mkdir -p " + COMMON_SUBDIR)
+            .body.append("mkdir -p " + BROOKLYN_SUBDIR)
+            .execute();
+
+        String[] fileNames = {
+                "brooklyn-activemq-spring.xml",
+                "brooklyn-bin.properties",
+                "brooklyn-infrastructure-spring.xml",
+                "brooklyn-viewprocessor-spring.xml",
+                "brooklyn.ini",
+                "brooklyn.properties",
+        };
+        for (String name : fileNames) {
+            String contents = processTemplate("classpath:/io/cloudsoft/opengamma/config/brooklyn/" + name);
+            String destination = String.format("%s/%s/%s", getRunDir(), BROOKLYN_SUBDIR, name);
+            getMachine().copyTo(new ByteArrayInputStream(contents.getBytes()), destination);
+        }
+
+        copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml",
+                getRunDir() + "/" + COMMON_SUBDIR + "/jetty-spring.xml");
+        copyResource("classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
+                getRunDir() + "/" + SCRIPT_SUBDIR + "/og-brooklyn.sh");
+
+        String contents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
+        String destination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
+        getMachine().copyTo(new ByteArrayInputStream(contents.getBytes()), destination);
+
+        newScript(CUSTOMIZING)
+                .updateTaskAndFailOnNonZeroResultCode()
+                .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
                 .execute();
-        
-        copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml", 
-                getRunDir()+"/"+COMMON_SUBDIR+"/jetty-spring.xml");
         
         /*
          * CODE FROM HERE DOWN TO LAUNCH copied from ActiveMQ -- 
@@ -114,34 +136,27 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     @Override
     public void launch() {
-        newScript(LAUNCHING).
-            updateTaskAndFailOnNonZeroResultCode().
-            body.append("cd opengamma", 
-                "nohup scripts/og-examples.sh start").
-            execute();
+        newScript(LAUNCHING)
+                .updateTaskAndFailOnNonZeroResultCode()
+                .body.append("cd opengamma", "nohup scripts/og-brooklyn.sh start")
+                .execute();
     }
 
 
     @Override
     public boolean isRunning() {
-        return newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), CHECK_RUNNING).
-                // ps --pid is not portable so can't use their scripts
-//                body.append("cd opengamma", "scripts/og-examples.sh status").
-                execute() == 0;
+        return newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), CHECK_RUNNING)
+                // XXX ps --pid is not portable so can't use their scripts
+                // .body.append("cd opengamma", "scripts/og-examples.sh status").
+                .execute() == 0;
     }
 
     @Override
     public void stop() {
-        newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), STOPPING).
-                // ps --pid is not portable so can't use their scripts
-//            body.append("cd opengamma", "scripts/og-examples.sh stop").
-            execute();
-    }
-
-    @Override
-    public void kill() {
-        newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), KILLING).
-            execute();
+        newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), STOPPING)
+                // XXX ps --pid is not portable so can't use their scripts
+                // .body.append("cd opengamma", "scripts/og-examples.sh stop").
+                .execute();
     }
 
     @Override
@@ -152,12 +167,11 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     @Override
     public Map<String, String> getShellEnvironment() {
         Map<String,String> env = super.getShellEnvironment();
-        
+
         // rename JAVA_OPTS to what OG scripts expect
         String jopts = env.remove("JAVA_OPTS");
-        if (jopts!=null) env.put("EXTRA_JVM_OPTS", jopts);
-        
+        if (jopts != null) env.put("EXTRA_JVM_OPTS", jopts);
+
         return env;
     }
-    
 }
