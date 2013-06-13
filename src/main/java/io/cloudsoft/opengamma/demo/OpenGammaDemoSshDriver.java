@@ -38,12 +38,15 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     @Override
     public void customize() {
         DownloadResolver resolver = ((EntityInternal)entity).getManagementContext().getEntityDownloadsManager().newDownloader(this);
-        String saveAs = resolver.getUnpackedDirectoryName(resolver.getFilename());
+        final String COMMON_SUBDIR = "opengamma/config/common";
         // Copy the install files to the run-dir
         newScript(CUSTOMIZING)
             .updateTaskAndFailOnNonZeroResultCode()
                 .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName("opengamma")+" "+"opengamma")
+                // create the dir where we will put new JMX config
+                .body.append("mkdir -p "+COMMON_SUBDIR)
                 .body.append("cd opengamma")
+                // amend the ports in the properties file
                 .body.append(String.format("sed -i.bk" +
                         " \"s/jetty.port = 8080/jetty.port = %s/\""+ 
                         " config/fullstack/fullstack-example.properties",
@@ -55,33 +58,40 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
                 .body.append("scripts/init-og-examples-db.sh")
                 .execute();
         
-        // TODO set up OG web port, and whatever else we want to customize
+        copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml", 
+                getRunDir()+"/"+COMMON_SUBDIR+"/jetty-spring.xml");
     }
 
     @Override
     public void launch() {
-        String mode = getEntity().getConfig(OpenGammaDemoServer.DEBUG_MODE) ? "debug" : "start";
-        newScript(MutableMap.of("usePidFile", true), LAUNCHING).
+        newScript(LAUNCHING).
             updateTaskAndFailOnNonZeroResultCode().
             body.append("cd opengamma", 
-                "nohup scripts/og-examples.sh "+mode+" > out.log 2> err.log < /dev/null &").
+                "nohup scripts/og-examples.sh start").
             execute();
     }
 
 
     @Override
     public boolean isRunning() {
-        return newScript(MutableMap.of("usePidFile", true), CHECK_RUNNING).execute() == 0;
+        return newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), CHECK_RUNNING).
+                // ps --pid is not portable so can't use their scripts
+//                body.append("cd opengamma", "scripts/og-examples.sh status").
+                execute() == 0;
     }
 
     @Override
     public void stop() {
-        newScript(MutableMap.of("usePidFile", true), STOPPING).execute();
+        newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), STOPPING).
+                // ps --pid is not portable so can't use their scripts
+//            body.append("cd opengamma", "scripts/og-examples.sh stop").
+            execute();
     }
 
     @Override
     public void kill() {
-        newScript(MutableMap.of("usePidFile", true), KILLING).execute();
+        newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), KILLING).
+            execute();
     }
 
     @Override

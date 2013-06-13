@@ -46,4 +46,11 @@ public interface OpenGammaDemoServer extends SoftwareProcess, WebAppService {
 
     public static final BasicAttributeSensor<Integer> CALC_NODE_COUNT =
             new BasicAttributeSensor<Integer>(Integer.class, "opengamma.calc.nodes.count", "Calc nodes total (default 8 per server)");
+    
+    public static final BasicAttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST =
+            new BasicAttributeSensor<Double>(Double.class, "webapp.reqs.processingTime.perSec.last", "Percentage of time spent processing requests (most recent period; cf CPU utilisation)");
+
+    public static final BasicAttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW =
+            new BasicAttributeSensor<Double>(Double.class, "webapp.reqs.processingTime.perSec.windowed", "Percentage of time spent processing requests (windowed over time period)");
+
 }
