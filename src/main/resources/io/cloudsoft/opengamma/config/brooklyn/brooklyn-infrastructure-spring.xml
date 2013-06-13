@@ -123,6 +123,12 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   </bean>
 
   <!-- ================================================================== -->
+
+  <bean id="mainActiveMQJmsConfiguration" class="com.opengamma.transport.jms.ActiveMQJmsConfiguration">
+    <property name="brokerHost" value="${driver.brokerAddress}" />
+    <property name="brokerPort" value="${driver.brokerPort?c}" />
+    <property name="timeout" value="3000" />
+  </bean>
   <bean id="activeMQConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
     <constructor-arg value="[#noparse]${activeMQ.brokerURL}[/#noparse]" />
     <property name="watchTopicAdvisories" value="false" /> <!-- IGN-94 -->

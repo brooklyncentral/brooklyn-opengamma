@@ -29,7 +29,7 @@ echo "### Creating empty database"
 $JAVA  -cp "$CLASSPATH" \
   -Dlogback.configurationFile=jetty-logback.xml \
   com.opengamma.util.test.DbTool \
-  -jdbcUrl jdbc:postgresql://${entity.database.address}:${entity.database.getAttribute(PostgreSqlNode.POSTGRESQL_PORT)?c}/example-db \
+  -jdbcUrl jdbc:postgresql://${driver.databaseLocation}/example-db \
   -database og-financial \
   -user "OpenGamma" \
   -password "OpenGamma" \
@@ -41,7 +41,7 @@ $JAVA  -cp "$CLASSPATH" \
 $JAVA  -cp "$CLASSPATH" \
   -Dlogback.configurationFile=jetty-logback.xml \
   com.opengamma.util.test.DbTool \
-  -jdbcUrl jdbc:postgresql://${entity.database.address}:${entity.database.getAttribute(PostgreSqlNode.POSTGRESQL_PORT)?c}/og-fin-user \
+  -jdbcUrl jdbc:postgresql://${driver.databaseLocation}/og-fin-user \
   -database og-financial \
   -user "OpenGamma" \
   -password "OpenGamma" \

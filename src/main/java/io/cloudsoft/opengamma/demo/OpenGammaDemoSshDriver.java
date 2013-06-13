@@ -8,8 +8,11 @@ import java.util.Map;
 import brooklyn.BrooklynVersion;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityLocal;
+import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
 import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
+import brooklyn.entity.messaging.activemq.ActiveMQBroker;
+import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.util.MutableMap;
 import brooklyn.util.ResourceUtils;
@@ -17,6 +20,7 @@ import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.CommonCommands;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.net.HostAndPort;
 
 public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
 
@@ -28,6 +32,34 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     public OpenGammaDemoSshDriver(EntityLocal entity, SshMachineLocation machine) {
         super(entity, machine);
+    }
+
+    // TODO use DependentConfiguration.attributeWhenReady
+
+    /** Return the {@link ActiveMqBroker#ADDRESS host} for the {@link OpenGammaDemoServer#BROKER broker}. */
+    public String getBrokerAddress() {
+        return entity.getConfig(OpenGammaDemoServer.BROKER).getAttribute(ActiveMQBroker.ADDRESS);
+    }
+
+    /** Return the {@link ActiveMqBroker#OPEN_WIRE_PORT port} for the {@link OpenGammaDemoServer#BROKER broker}. */
+    public Integer getBrokerPort() {
+        return entity.getConfig(OpenGammaDemoServer.BROKER).getAttribute(ActiveMQBroker.OPEN_WIRE_PORT);
+    }
+
+    /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#BROKER broker}. */
+    public String getBrokerLocation() {
+        String address = getBrokerAddress();
+        Integer port = getBrokerPort();
+        HostAndPort broker = HostAndPort.fromParts(address, port);
+        return broker.toString();
+    }
+
+    /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#DATABASE database}. */
+    public String getDatabaseLocation() {
+        String address = entity.getConfig(OpenGammaDemoServer.DATABASE).getAttribute(PostgreSqlNode.ADDRESS);
+        Integer port = entity.getConfig(OpenGammaDemoServer.DATABASE).getAttribute(PostgreSqlNode.POSTGRESQL_PORT);
+        HostAndPort database = HostAndPort.fromParts(address, port);
+        return database.toString();
     }
 
     @Override
@@ -50,7 +82,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     @Override
     public void customize() {
         installJava();
-        
+
         DownloadResolver resolver = Entities.newDownloader(this);
         // Copy the install files to the run-dir
         newScript(CUSTOMIZING)
@@ -62,7 +94,6 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
             .execute();
 
         String[] fileNames = {
-                "brooklyn-activemq-spring.xml",
                 "brooklyn-bin.properties",
                 "brooklyn-infrastructure-spring.xml",
                 "brooklyn-viewprocessor-spring.xml",
@@ -77,12 +108,13 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
         copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml",
                 getRunDir() + "/" + COMMON_SUBDIR + "/jetty-spring.xml");
-        copyResource("classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
+        copyResource(MutableMap.of("permissions", "755"),
+                "classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
                 getRunDir() + "/" + SCRIPT_SUBDIR + "/og-brooklyn.sh");
 
         String contents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
         String destination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
-        getMachine().copyTo(new ByteArrayInputStream(contents.getBytes()), destination);
+        getMachine().copyTo(MutableMap.of("permissions", "755"), new ByteArrayInputStream(contents.getBytes()), destination);
 
         newScript(CUSTOMIZING)
                 .updateTaskAndFailOnNonZeroResultCode()
@@ -94,7 +126,6 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
          * TODO replace with off-the-shelf conveniences when using brooklyn 0.6.0 (snapshot)
          */
         // Copy JMX agent Jar to server
-        // TODO do this based on config property in UsesJmx
         getMachine().copyTo(new ResourceUtils(this).getResourceFromUrl(getJmxRmiAgentJarUrl()), getJmxRmiAgentJarDestinationFilePath());
     }
 

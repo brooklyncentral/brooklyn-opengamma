@@ -9,8 +9,10 @@ import org.slf4j.LoggerFactory;
 import brooklyn.enricher.RollingTimeWindowMeanEnricher;
 import brooklyn.enricher.TimeWeightedDeltaEnricher;
 import brooklyn.entity.basic.SoftwareProcessImpl;
+import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.java.JavaAppUtils;
 import brooklyn.entity.java.UsesJmx;
+import brooklyn.entity.messaging.activemq.ActiveMQBroker;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.entity.webapp.WebAppServiceMethods;
 import brooklyn.event.adapter.JmxObjectNameAdapter;
@@ -21,7 +23,6 @@ import brooklyn.event.feed.http.HttpValueFunctions;
 import brooklyn.event.feed.jmx.JmxHelper;
 import brooklyn.location.MachineProvisioningLocation;
 import brooklyn.location.access.BrooklynAccessUtils;
-import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
 import brooklyn.util.MutableMap;
 
@@ -35,6 +36,14 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
     
     private HttpFeed httpFeed;
     private JmxObjectNameAdapter jettyStatsHandler;
+    private ActiveMQBroker broker;
+    private PostgreSqlNode database;
+
+    @Override
+    public void init() {
+        broker = getConfig(BROKER);
+        database = getConfig(DATABASE);
+    }
 
     @Override
     public Class getDriverInterface() {
@@ -79,7 +88,6 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
         super.postStart();
         
         // do all this after service up, to prevent warnings
-        
         // TODO migrate JMX routines to brooklyn 6 syntax
         
         Map flags = MutableMap.of("period", 5000);
@@ -144,4 +152,12 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
         if (httpFeed != null) httpFeed.stop();
     }
 
+
+    /** {@inheritDoc} */
+    @Override
+    public ActiveMQBroker getBroker() { return broker; }
+
+    /** {@inheritDoc} */
+    @Override
+    public PostgreSqlNode getDatabase() { return database; }
 }

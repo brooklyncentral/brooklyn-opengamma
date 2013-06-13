@@ -22,7 +22,9 @@ import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.StartableApplication;
+import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.group.DynamicCluster;
+import brooklyn.entity.messaging.activemq.ActiveMQBroker;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
 import brooklyn.entity.webapp.DynamicWebAppCluster;
@@ -38,9 +40,9 @@ import com.google.common.collect.Lists;
 
 @Catalog(name="OpenGamma Cluster", description="Open source risk management platform for capital markets - real-time market risk analytics and stress testing", iconUrl="classpath://opengamma-logo.png")
 public class OpenGammaCluster extends AbstractApplication implements StartableApplication {
-    
+
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaCluster.class);
-    
+
     public static final String DEFAULT_LOCATION = "localhost";
 
     @CatalogConfig(label="Debug Mode", priority=2)
@@ -49,14 +51,22 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     /** build the application */
     @Override
     public void init() {
+        // Add external services (message bus broker and database server) for cluster
+        // TODO make these more configurable
+        ActiveMQBroker broker = addChild(EntitySpecs.spec(ActiveMQBroker.class));
+        PostgreSqlNode database = addChild(EntitySpecs.spec(PostgreSqlNode.class));
+
         ControlledDynamicWebAppCluster web = addChild(
                 EntitySpecs.spec(ControlledDynamicWebAppCluster.class)
                     .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                     .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, 
-                            EntitySpecs.spec(OpenGammaDemoServer.class).displayName("OpenGamma Server"))
+                            EntitySpecs.spec(OpenGammaDemoServer.class)
+                                    .displayName("OpenGamma Server")
+                                    .configure(OpenGammaDemoServer.BROKER, broker)
+                                    .configure(OpenGammaDemoServer.DATABASE, database))
                     .displayName("OpenGamma Server Cluster (Web/View/Calc)")
                 );
-        
+
         initAggregatingMetrics(web);
         initResilience(web);
         initElasticity(web);
@@ -75,7 +85,6 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
                 HttpLatencyDetector.REQUEST_LATENCY_IN_SECONDS_IN_WINDOW,
                 OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT_PER_NODE));
     }
-
 
     /** this attaches a policy at each OG Server listening for ENTITY_FAILED,
      * attempting to _restart_ the process, and 
@@ -119,7 +128,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
                  .webconsolePort(port)
                  .location(location)
                  .start();
-             
+
         Entities.dumpInfo(launcher.getApplications());
     }
 }
