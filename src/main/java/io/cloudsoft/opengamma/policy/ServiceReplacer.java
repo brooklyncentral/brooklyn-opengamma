@@ -74,6 +74,12 @@ public class ServiceReplacer extends AbstractPolicy {
         try {
             Entities.invokeEffectorWithArgs(entity, entity, DynamicCluster.REPLACE_MEMBER, event.getSource().getId()).get();
         } catch (Exception e) {
+            // FIXME replaceMember fails if stop fails on the old node; should resolve that more gracefully than this
+            if (e.toString().contains("stopping") && e.toString().contains(event.getSource().getId())) {
+                LOG.info("ServiceReplacer: ignoring error reported from stopping failed node "+event.getSource());
+                return;
+            }
+            
             onReplacementFailed("Replace failure (error "+e+") at "+entity+": "+event.getValue());
         }
     }
