@@ -1,9 +1,11 @@
 package io.cloudsoft.opengamma.demo;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import brooklyn.BrooklynVersion;
 import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
@@ -11,6 +13,8 @@ import brooklyn.entity.drivers.downloads.DownloadResolver;
 import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.util.MutableMap;
+import brooklyn.util.ResourceUtils;
+import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.CommonCommands;
 
 public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
@@ -37,6 +41,8 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     @Override
     public void customize() {
+        installJava();
+        
         DownloadResolver resolver = ((EntityInternal)entity).getManagementContext().getEntityDownloadsManager().newDownloader(this);
         final String COMMON_SUBDIR = "opengamma/config/common";
         // Copy the install files to the run-dir
@@ -60,6 +66,50 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         
         copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml", 
                 getRunDir()+"/"+COMMON_SUBDIR+"/jetty-spring.xml");
+        
+        /*
+         * CODE FROM HERE DOWN TO LAUNCH copied from ActiveMQ -- 
+         * TODO replace with off-the-shelf conveniences when using brooklyn 0.6.0 (snapshot)
+         */
+        // Copy JMX agent Jar to server
+        // TODO do this based on config property in UsesJmx
+        getMachine().copyTo(new ResourceUtils(this).getResourceFromUrl(getJmxRmiAgentJarUrl()), getJmxRmiAgentJarDestinationFilePath());
+    }
+
+    public String getJmxRmiAgentJarBasename() {
+        return "brooklyn-jmxrmi-agent-" + BrooklynVersion.get() + ".jar";
+    }
+
+    public String getJmxRmiAgentJarUrl() {
+        return "classpath://" + getJmxRmiAgentJarBasename();
+    }
+
+    public String getJmxRmiAgentJarDestinationFilePath() {
+        return getRunDir() + "/" + getJmxRmiAgentJarBasename();
+    }
+
+    @Override
+    protected Map<String, ?> getJmxJavaSystemProperties() {
+        MutableMap<String, ?> opts = MutableMap.copyOf(super.getJmxJavaSystemProperties());
+        if (opts != null && opts.size() > 0) {
+            opts.remove("com.sun.management.jmxremote.port");
+        }
+        return opts;
+    }
+
+    /**
+     * Return any JVM arguments required, other than the -D defines returned by {@link #getJmxJavaSystemProperties()}
+     */
+    protected List<String> getJmxJavaConfigOptions() {
+        List<String> result = new ArrayList<String>();
+        // TODO do this based on config property in UsesJmx
+        String jmxOpt = String.format("-javaagent:%s -D%s=%d -D%s=%d -Djava.rmi.server.hostname=%s",
+                getJmxRmiAgentJarDestinationFilePath(),
+                JmxRmiAgent.JMX_SERVER_PORT_PROPERTY, getJmxPort(),
+                JmxRmiAgent.RMI_REGISTRY_PORT_PROPERTY, getRmiServerPort(),
+                getHostname());
+        result.add(jmxOpt);
+        return result;
     }
 
     @Override

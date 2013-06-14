@@ -2,6 +2,7 @@ package io.cloudsoft.opengamma.demo;
 
 import java.util.Map;
 
+import org.jclouds.compute.domain.OsFamily;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +19,10 @@ import brooklyn.event.feed.http.HttpFeed;
 import brooklyn.event.feed.http.HttpPollConfig;
 import brooklyn.event.feed.http.HttpValueFunctions;
 import brooklyn.event.feed.jmx.JmxHelper;
+import brooklyn.location.MachineProvisioningLocation;
 import brooklyn.location.access.BrooklynAccessUtils;
+import brooklyn.location.jclouds.JcloudsLocationConfig;
+import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
 import brooklyn.util.MutableMap;
 
 import com.google.common.base.Function;
@@ -35,6 +39,20 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
     @Override
     public Class getDriverInterface() {
         return OpenGammaDemoDriver.class;
+    }
+
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
+        Map flags = super.obtainProvisioningFlags(location);
+        flags.put("templateBuilder", new PortableTemplateBuilder()
+            // need a beefy machine
+            .os64Bit(true)
+            .minRam(4096)
+            // use CENTOS for now, just because UBUNTU images in AWS are dodgy (poor java support)
+            .osFamily(OsFamily.UBUNTU).osVersionMatches("12.04")
+//          .osFamily(OsFamily.CENTOS)
+            );
+        return flags;
     }
 
     @Override

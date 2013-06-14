@@ -101,7 +101,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                  .application(EntitySpecs.appSpec(OpenGammaCluster.class)
-                         .displayName("OpenGamma Cluster Example"))
+                         .displayName("OpenGamma Cluster Application"))
                  .webconsolePort(port)
                  .location(location)
                  .start();
