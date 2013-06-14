@@ -5,22 +5,24 @@ Brooklyn deployment and management of the OpenGamma financial analytics platform
 
 For screenshots, see: https://github.com/cloudsoft/brooklyn-opengamma/tree/master/docs/screenshots/
 
-### Setup 1:  Dependencies
 
-You must have the following software installed and compiled (`mvn clean install`):
+### Setup 1:  Getting and Building
+
+You must have the following repo installed and compiled (`git clone`, or download the code as a ZIP):
 
 * `https://github.com/cloudsoft/brooklyn-opengamma`
 
+To compile brooklyn-opengamma, in the root of this project, you'll need maven 3 and javac 1.6 or higher;
+then simply run:
 
-### Compile
-
-To compile brooklyn-opengamma, simply `mvn clean install` in the project root.
+* `mvn clean install` -- to build a JAR (suitable for use with Brooklyn CLI)
+* `mvn clean assembly:assembly` -- to build an executable assembly
 
 
 ### Setup 2:  Credentials
 
 To run, you'll need to specify credentials for your preferred cloud.  This can be done 
-in `~/.brooklyn/brooklyn.properties`:
+in `~/.brooklyn/brooklyn.properties`, using this syntax (shown for AWS):
 
     brooklyn.jclouds.aws-ec2.identity=AKXXXXXXXXXXXXXXXXXX
     brooklyn.jclouds.aws-ec2.credential=secret01xxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -29,39 +31,59 @@ Alternatively these can be set as shell environment parameters or JVM system pro
 
 Many other clouds are supported also, as well as pre-existing machines ("bring your own nodes"),
 custom endpoints for private clouds, and specifying custom keys and passphrases.
-For more information see:
+For more information see the section on "Locations" in the User Guide:
 
-    https://github.com/brooklyncentral/brooklyn/blob/master/docs/use/guide/defining-applications/common-usage.md#off-the-shelf-locations
+    http://brooklyn.io/use/guide/defining-applications/common-usage.html
 
 
 ### Run
 
-To run it, either:
+The `mvn assembly:assembly` command above creates a tarball in `target/brooklyn-opengamma-...-bin.tar.gz`.
+Unpack this and run:
 
-* Install the `brooklyn` CLI tool, either from source (as above) or from 
-  http://brooklyncentral.github.com/ and then in root of this project:
+* `./start.sh --location <LOCATION>`
+
+Where `<LOCATION>` is either:
+
+* A cloud or environment you've set up as above, such as `aws-ec2:us-east-1`:
+  Not every environment has been tested, of course, but dependencies are fairly simple, 
+  mainly java and gcc, so it should be fairly portable, and quick to fix any targets which need attention.
+  Let us know if we can help with some environment where this doesn't work! 
+* `localhost`: This bundle can run on a localhost *nix system, standing up multiple processes,
+  scaling out, and resilient to process failures (or deliberate kills). 
+  This requires passwordless `ssh localhost` login, and (for nginx) a dev 
+  environment including `gcc` and the lib `pcre`.
+  (On OS X this can usually be achieved by installing XCode and XCode Command-Line tools, both from Apple,
+  and `sudo port install pcre`, using MacPorts.)  
+
+You can also run it using the `brooklyn` CLI tool, similarly to how the Brooklyn quick-start does it,
+at http://brooklyncentral.github.com/ :
 
         export BROOKLYN_CLASSPATH=target/brooklyn-opengamma-0.1.0-SNAPSHOT.jar
         brooklyn launch -a io.cloudsoft.opengamma.OpenGammaCluster -l aws-ec2:us-east-1
 
-* Grab all dependencies (using maven, or in your favourite IDE) and run the 
-  static `main` in `io.cloudsoft.opengamma.OpenGammaCluster`.
+And, of course, as it's just java, you can run it in any number of ways (such as an IDE), 
+pointing at the static `main` in `io.cloudsoft.opengamma.OpenGammaCluster`.
 
-* Build `mvn assembly:assembly` below then follow the instructions in the generated archive.
+
+### Demo
 
 After about 5 minutes, it should print out the URL of the OpenGamma web/view console.
 In the meantime you can follow the progress in the Brooklyn console, usually at localhost:8081.  
+
+In the Brooklyn console, you can:
+
+* See the sensors on the root of the "OpenGamma Cluster Application", including a link to OpenGamma itself
+* Drill down into the individual OpenGamma servers, and see detailed metrics (search for "time" or "reqs")
+* Step up to the parent nodes to see selected aggregated metrics (do the same search)
+* See the policies on the OG server nodes, on the DWAC parent, and on nginx 
+* Observe the "Summary" for the server nodes; kill the process and/or the VM, and watch it get removed from nginx, 
+  the policies kick in to recover, and then the recovered node updated in nginx
 
 To destroy the VM's provisioned, either invoke `stop` on the root of the application in the 
 Brooklyn console or use the management console of your cloud.  VM's are not destroyed simply 
 by killing Brooklyn.
 
-
-### Executable Assembly
-
-This project can also build a binary redistributable by using mvn assembly:assembly.
-See the source files under `src/main/assembly` for more information.  These can 
-easily be modified for a custom archive.
 
 
 ### More about Brooklyn
