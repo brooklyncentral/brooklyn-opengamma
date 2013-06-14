@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.catalog.Catalog;
 import brooklyn.catalog.CatalogConfig;
 import brooklyn.config.ConfigKey;
 import brooklyn.enricher.HttpLatencyDetector;
@@ -35,6 +36,7 @@ import brooklyn.util.CommandLineUtil;
 
 import com.google.common.collect.Lists;
 
+@Catalog(name="OpenGamma Cluster", description="Open source risk management platform for capital markets - real-time market risk analytics and stress testing", iconUrl="classpath://opengamma-logo.png")
 public class OpenGammaCluster extends AbstractApplication implements StartableApplication {
     
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaCluster.class);
