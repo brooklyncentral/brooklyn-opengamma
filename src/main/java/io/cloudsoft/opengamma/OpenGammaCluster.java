@@ -30,6 +30,7 @@ import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.event.SensorEvent;
 import brooklyn.event.SensorEventListener;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.util.CommandLineUtil;
 
 import com.google.common.collect.Lists;
@@ -56,7 +57,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         
         initAggregatingMetrics(web);
         initResilience(web);
-        
+        initElasticity(web);
     }
 
     /** aggregate metrics and selected KPI's */
@@ -92,6 +93,17 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     protected void initSoftwareProcess(SoftwareProcess p) {
         p.addPolicy(new ServiceFailureDetector());
         p.addPolicy(new ServiceRestarter(ServiceFailureDetector.ENTITY_FAILED));
+    }
+
+    /** configures scale-out and scale-back; in this case based on number of view processes active,
+     * allowing an (artificially low) max of 1.2 per node, 
+     * so as soon as you have 3 view processes a scale-out is forced */
+    protected void initElasticity(ControlledDynamicWebAppCluster web) {
+        web.getCluster().addPolicy(AutoScalerPolicy.builder().
+                metric(OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT_PER_NODE).
+                metricRange(0.8, 1.2).
+                sizeRange(2, 5).
+                build());
     }
 
     public static void main(String[] argv) {
