@@ -38,7 +38,8 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
         // Add external services (message bus broker and database server)
         // TODO make these more configurable
         ActiveMQBroker broker = addChild(EntitySpecs.spec(ActiveMQBroker.class));
-        PostgreSqlNode database = addChild(EntitySpecs.spec(PostgreSqlNode.class));
+        PostgreSqlNode database = addChild(EntitySpecs.spec(PostgreSqlNode.class)
+                .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
 
         // Add the OG server configured with external services
         OpenGammaDemoServer web = addChild(
