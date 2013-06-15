@@ -152,6 +152,11 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
         if (httpFeed != null) httpFeed.stop();
     }
 
+    /** HTTP port number for Jetty web service. */
+    public Integer getHttpPort() { return getAttribute(HTTP_PORT); }
+
+    /** HTTPS port number for Jetty web service. */
+    public Integer getHttpsPort() { return getAttribute(HTTPS_PORT); }
 
     /** {@inheritDoc} */
     @Override
