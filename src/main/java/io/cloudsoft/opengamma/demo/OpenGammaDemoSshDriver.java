@@ -1,23 +1,29 @@
 package io.cloudsoft.opengamma.demo;
 
-import java.io.ByteArrayInputStream;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import brooklyn.BrooklynVersion;
+import brooklyn.config.ConfigKey;
+import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
 import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
 import brooklyn.entity.messaging.activemq.ActiveMQBroker;
+import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.util.MutableMap;
 import brooklyn.util.ResourceUtils;
+import brooklyn.util.exceptions.Exceptions;
+import brooklyn.util.internal.ssh.SshTool;
 import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.CommonCommands;
+import brooklyn.util.task.Tasks;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.HostAndPort;
@@ -34,16 +40,28 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         super(entity, machine);
     }
 
-    // TODO use DependentConfiguration.attributeWhenReady
+    // FIXME should not have to jump through these hoops
+    // unintuitive that .get() doesn't work (because the task isn't submitted)
+    private <T> T attributeWhenReady(ConfigKey<? extends Entity> target, AttributeSensor<T> sensor) {
+        try {
+            return Tasks.resolveValue(
+                    DependentConfiguration.attributeWhenReady(entity.getConfig(target), sensor),
+                    sensor.getType(),
+                    entity.getExecutionContext(),
+                    "Getting "+sensor+" from "+target);
+        } catch (Exception e) {
+            throw Exceptions.propagate(e);
+        }
+    }
 
-    /** Return the {@link ActiveMqBroker#ADDRESS host} for the {@link OpenGammaDemoServer#BROKER broker}. */
+    /** Blocking call to return the {@link ActiveMqBroker#ADDRESS host} for the {@link OpenGammaDemoServer#BROKER broker}. */
     public String getBrokerAddress() {
-        return entity.getConfig(OpenGammaDemoServer.BROKER).getAttribute(ActiveMQBroker.ADDRESS);
+        return attributeWhenReady(OpenGammaDemoServer.BROKER, ActiveMQBroker.ADDRESS);
     }
 
     /** Return the {@link ActiveMqBroker#OPEN_WIRE_PORT port} for the {@link OpenGammaDemoServer#BROKER broker}. */
     public Integer getBrokerPort() {
-        return entity.getConfig(OpenGammaDemoServer.BROKER).getAttribute(ActiveMQBroker.OPEN_WIRE_PORT);
+        return attributeWhenReady(OpenGammaDemoServer.BROKER, ActiveMQBroker.OPEN_WIRE_PORT);
     }
 
     /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#BROKER broker}. */
@@ -54,10 +72,10 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         return broker.toString();
     }
 
-    /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#DATABASE database}. */
+    /** Blocking call to return the {@code host:port} location for the {@link OpenGammaDemoServer#DATABASE database}. */
     public String getDatabaseLocation() {
-        String address = entity.getConfig(OpenGammaDemoServer.DATABASE).getAttribute(PostgreSqlNode.ADDRESS);
-        Integer port = entity.getConfig(OpenGammaDemoServer.DATABASE).getAttribute(PostgreSqlNode.POSTGRESQL_PORT);
+        String address = attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.ADDRESS);
+        Integer port = attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.POSTGRESQL_PORT);
         HostAndPort database = HostAndPort.fromParts(address, port);
         return database.toString();
     }
@@ -102,19 +120,21 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         };
         for (String name : fileNames) {
             String contents = processTemplate("classpath:/io/cloudsoft/opengamma/config/brooklyn/" + name);
+            // TODO use Urls.mergePath (brooklyn 0.6)
             String destination = String.format("%s/%s/%s", getRunDir(), BROOKLYN_SUBDIR, name);
-            getMachine().copyTo(new ByteArrayInputStream(contents.getBytes()), destination);
+            // TODO brooklyn 0.6 use KnownSizeInputStream.of(contents) (and also below)
+            getMachine().copyTo(new StringReader(contents), destination);
         }
 
         copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml",
                 getRunDir() + "/" + COMMON_SUBDIR + "/jetty-spring.xml");
-        copyResource(MutableMap.of("permissions", "755"),
+        copyResource(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), 
                 "classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
                 getRunDir() + "/" + SCRIPT_SUBDIR + "/og-brooklyn.sh");
 
         String contents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
         String destination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
-        getMachine().copyTo(MutableMap.of("permissions", "755"), new ByteArrayInputStream(contents.getBytes()), destination);
+        getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(contents), destination);
 
         newScript(CUSTOMIZING)
                 .updateTaskAndFailOnNonZeroResultCode()
