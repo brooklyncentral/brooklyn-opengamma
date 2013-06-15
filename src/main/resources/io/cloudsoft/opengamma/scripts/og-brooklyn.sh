@@ -36,7 +36,8 @@ PROJECTJAR=${PROJECT}.jar
 . ${SCRIPTDIR}/componentserver-init-utils.sh
 
 if [ -x ${SCRIPTDIR}/init-${DATABASE}-db.sh ]; then
-  ${SCRIPTDIR}/init-${DATABASE}-db.sh || exit 1
+#  ${SCRIPTDIR}/init-${DATABASE}-db.sh || exit 1
+  echo assuming DB already initialised
 else
   echo The ${PROJECT} database could not be found.
   echo Please run ${SCRIPTDIR}/init-${DATABASE}-db.sh to create and populate the database.
