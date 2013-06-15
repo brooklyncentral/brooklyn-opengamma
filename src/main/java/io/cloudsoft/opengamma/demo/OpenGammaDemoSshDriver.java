@@ -15,6 +15,7 @@ import brooklyn.entity.drivers.downloads.DownloadResolver;
 import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
 import brooklyn.entity.messaging.activemq.ActiveMQBroker;
 import brooklyn.event.AttributeSensor;
+import brooklyn.event.basic.BasicAttributeSensor;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.util.MutableMap;
@@ -26,6 +27,7 @@ import brooklyn.util.ssh.CommonCommands;
 import brooklyn.util.task.Tasks;
 
 import com.google.common.base.Predicates;
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
@@ -38,6 +40,10 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     private static final String COMMON_SUBDIR = CONFIG_SUBDIR + "/common";
     private static final String BROOKLYN_SUBDIR = CONFIG_SUBDIR + "/brooklyn";
 
+    // sensor put on DB entity, when running distributed, not OG server 
+    public static final AttributeSensor<Boolean> DB_INITIALISED =
+            new BasicAttributeSensor<Boolean>(Boolean.class, "opengamma.database.initialised");
+    
     public OpenGammaDemoSshDriver(EntityLocal entity, SshMachineLocation machine) {
         super(entity, machine);
     }
@@ -143,15 +149,24 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
         // Use the database server's location  and id as a mutex to prevents multiple execution of the initialisation code
         Entity database = entity.getConfig(OpenGammaDemoServer.DATABASE);
-        SshMachineLocation machine = (SshMachineLocation) Iterables.find(database.getLocations(), Predicates.instanceOf(SshMachineLocation.class));
-        if (machine.tryAcquireMutex(database.getId(), "initialising database "+database)) {
-            log.info("{}: Initialising database on {}", entity, database);
-            newScript(CUSTOMIZING)
-                    .updateTaskAndFailOnNonZeroResultCode()
-                    .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
-                    .execute();
-        } else {
-            log.info("{}: Database on {} already initialised", entity, database);
+        if (database!=null) {
+            SshMachineLocation machine = (SshMachineLocation) Iterables.find(database.getLocations(), Predicates.instanceOf(SshMachineLocation.class));
+            try {
+                machine.acquireMutex(database.getId(), "initialising database "+database);
+            } catch (InterruptedException e) {
+                throw Throwables.propagate(e);
+            }
+            if (database.getAttribute(DB_INITIALISED) != Boolean.TRUE) {
+                log.info("{}: Initialising database on {}", entity, database);
+                newScript(CUSTOMIZING)
+                .updateTaskAndFailOnNonZeroResultCode()
+                .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
+                .execute();
+                ((EntityLocal)database).setAttribute(DB_INITIALISED, true);
+            } else {
+                log.info("{}: Database on {} already initialised", entity, database);
+            }
+            machine.releaseMutex(database.getId());
         }
 
         /*
