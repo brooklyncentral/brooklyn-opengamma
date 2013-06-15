@@ -1,5 +1,7 @@
 package io.cloudsoft.opengamma.demo;
 
+import static brooklyn.util.GroovyJavaMethods.elvis;
+
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -132,11 +134,16 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
                 "classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
                 getRunDir() + "/" + SCRIPT_SUBDIR + "/og-brooklyn.sh");
 
+        // wait for DB up, of course
+        attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.SERVICE_UP);
+        
         String contents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
         String destination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
         getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(contents), destination);
 
         newScript(CUSTOMIZING)
+                .useMutex(getLocation(), getInstallDir(), "initialising database "+elvis(entity,this))
+                // above prevents _simultaneous_ execution (though it still might run multiple times)
                 .updateTaskAndFailOnNonZeroResultCode()
                 .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
                 .execute();
@@ -187,6 +194,9 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     @Override
     public void launch() {
+        // and wait for broker up also
+        attributeWhenReady(OpenGammaDemoServer.BROKER, PostgreSqlNode.SERVICE_UP);
+        
         newScript(LAUNCHING)
                 .updateTaskAndFailOnNonZeroResultCode()
                 .body.append("cd opengamma", "nohup scripts/og-brooklyn.sh start")
