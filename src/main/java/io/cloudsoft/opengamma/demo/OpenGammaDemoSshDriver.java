@@ -158,20 +158,21 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
             SshMachineLocation machine = (SshMachineLocation) Iterables.find(database.getLocations(), Predicates.instanceOf(SshMachineLocation.class));
             try {
                 machine.acquireMutex(database.getId(), "initialising database "+database);
+                if (database.getAttribute(DB_INITIALISED) != Boolean.TRUE) {
+                    log.info("{}: Initialising database on {}", entity, database);
+                    newScript(CUSTOMIZING)
+                            .updateTaskAndFailOnNonZeroResultCode()
+                            .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
+                            .execute();
+                    ((EntityLocal)database).setAttribute(DB_INITIALISED, true);
+                } else {
+                    log.info("{}: Database on {} already initialised", entity, database);
+                }
             } catch (InterruptedException e) {
                 throw Throwables.propagate(e);
+            } finally {
+                machine.releaseMutex(database.getId());
             }
-            if (database.getAttribute(DB_INITIALISED) != Boolean.TRUE) {
-                log.info("{}: Initialising database on {}", entity, database);
-                newScript(CUSTOMIZING)
-                .updateTaskAndFailOnNonZeroResultCode()
-                .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
-                .execute();
-                ((EntityLocal)database).setAttribute(DB_INITIALISED, true);
-            } else {
-                log.info("{}: Database on {} already initialised", entity, database);
-            }
-            machine.releaseMutex(database.getId());
         }
 
         /*
