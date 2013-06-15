@@ -1,7 +1,5 @@
 package io.cloudsoft.opengamma.demo;
 
-import static brooklyn.util.GroovyJavaMethods.elvis;
-
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +25,9 @@ import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.CommonCommands;
 import brooklyn.util.task.Tasks;
 
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
 
 public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
@@ -74,7 +74,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         return broker.toString();
     }
 
-    /** Blocking call to return the {@code host:port} location for the {@link OpenGammaDemoServer#DATABASE database}. */
+    /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#DATABASE database}. */
     public String getDatabaseLocation() {
         String address = attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.ADDRESS);
         Integer port = attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.POSTGRESQL_PORT);
@@ -141,13 +141,19 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         String destination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
         getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(contents), destination);
 
-        newScript(CUSTOMIZING)
-                .useMutex(getLocation(), getInstallDir(), "initialising database "+elvis(entity,this))
-                // above prevents _simultaneous_ execution (though it still might run multiple times)
-                .updateTaskAndFailOnNonZeroResultCode()
-                .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
-                .execute();
-        
+        // Use the database server's location  and id as a mutex to prevents multiple execution of the initialisation code
+        Entity database = entity.getConfig(OpenGammaDemoServer.DATABASE);
+        SshMachineLocation machine = (SshMachineLocation) Iterables.find(database.getLocations(), Predicates.instanceOf(SshMachineLocation.class));
+        if (machine.tryAcquireMutex(database.getId(), "initialising database "+database)) {
+            log.info("{}: Initialising database on {}", entity, database);
+            newScript(CUSTOMIZING)
+                    .updateTaskAndFailOnNonZeroResultCode()
+                    .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
+                    .execute();
+        } else {
+            log.info("{}: Database on {} already initialised", entity, database);
+        }
+
         /*
          * CODE FROM HERE DOWN TO LAUNCH copied from ActiveMQ -- 
          * TODO replace with off-the-shelf conveniences when using brooklyn 0.6.0 (snapshot)

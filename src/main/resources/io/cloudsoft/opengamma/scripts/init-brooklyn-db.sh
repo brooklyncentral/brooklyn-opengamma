@@ -30,10 +30,10 @@ $JAVA  -cp "$CLASSPATH" \
   -Dlogback.configurationFile=jetty-logback.xml \
   com.opengamma.util.test.DbTool \
   -jdbcUrl jdbc:postgresql://${driver.databaseLocation}/example \
-  -database og-financial \
+  -database example \
   -user "opengamma" \
   -password "OpenGamma" \
-  -drop true \
+  -drop false \
   -create true \
   -createtables true \
   -dbscriptbasedir .
@@ -42,10 +42,10 @@ $JAVA  -cp "$CLASSPATH" \
   -Dlogback.configurationFile=jetty-logback.xml \
   com.opengamma.util.test.DbTool \
   -jdbcUrl jdbc:postgresql://${driver.databaseLocation}/opengamma \
-  -database og-financial \
+  -database opengamma \
   -user "opengamma" \
   -password "OpenGamma" \
-  -drop true \
+  -drop false \
   -create true \
   -createtables true \
   -dbscriptbasedir .
