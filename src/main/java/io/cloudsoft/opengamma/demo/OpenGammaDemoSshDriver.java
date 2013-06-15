@@ -39,6 +39,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     private static final String CONFIG_SUBDIR = OPENGAMMA_SUBDIR + "/config";
     private static final String COMMON_SUBDIR = CONFIG_SUBDIR + "/common";
     private static final String BROOKLYN_SUBDIR = CONFIG_SUBDIR + "/brooklyn";
+    private static final String TOOLCONTEXT_SUBDIR = CONFIG_SUBDIR + "/toolcontext";
 
     // sensor put on DB entity, when running distributed, not OG server 
     public static final AttributeSensor<Boolean> DB_INITIALISED =
@@ -140,12 +141,16 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
                 "classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
                 getRunDir() + "/" + SCRIPT_SUBDIR + "/og-brooklyn.sh");
 
+        String toolcontextContents = processTemplate("classpath:/io/cloudsoft/opengamma/config/toolcontext/toolcontext-example.properties");
+        String toolcontextDestination = String.format("%s/%s/%s", getRunDir(), TOOLCONTEXT_SUBDIR, "toolcontext-example.properties");
+        getMachine().copyTo(new StringReader(toolcontextContents), toolcontextDestination);
+
+        String scriptContents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
+        String scriptDestination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
+        getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(scriptContents), scriptDestination);
+
         // wait for DB up, of course
         attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.SERVICE_UP);
-        
-        String contents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
-        String destination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
-        getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(contents), destination);
 
         // Use the database server's location  and id as a mutex to prevents multiple execution of the initialisation code
         Entity database = entity.getConfig(OpenGammaDemoServer.DATABASE);

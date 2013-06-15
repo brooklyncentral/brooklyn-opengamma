@@ -33,7 +33,6 @@ $JAVA  -cp "$CLASSPATH" \
   -database example \
   -user "opengamma" \
   -password "OpenGamma" \
-  -drop false \
   -create true \
   -createtables true \
   -dbscriptbasedir .
@@ -45,7 +44,6 @@ $JAVA  -cp "$CLASSPATH" \
   -database opengamma \
   -user "opengamma" \
   -password "OpenGamma" \
-  -drop false \
   -create true \
   -createtables true \
   -dbscriptbasedir .
