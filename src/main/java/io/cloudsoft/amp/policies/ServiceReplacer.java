@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.policy;
+package io.cloudsoft.amp.policies;
 
 import java.util.Map;
 

@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.demo;
+package io.cloudsoft.opengamma.server;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
 
-public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
+public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaServerDriver {
 
     private static final String OPENGAMMA_SUBDIR = "opengamma";
     private static final String TEMP_SUBDIR = OPENGAMMA_SUBDIR + "/temp";
@@ -46,7 +46,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     public static final AttributeSensor<Boolean> DB_INITIALISED =
             new BasicAttributeSensor<Boolean>(Boolean.class, "opengamma.database.initialised");
     
-    public OpenGammaDemoSshDriver(EntityLocal entity, SshMachineLocation machine) {
+    public OpenGammaServerSshDriver(EntityLocal entity, SshMachineLocation machine) {
         super(entity, machine);
     }
 
@@ -64,17 +64,17 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         }
     }
 
-    /** Blocking call to return the {@link ActiveMqBroker#ADDRESS host} for the {@link OpenGammaDemoServer#BROKER broker}. */
+    /** Blocking call to return the {@link ActiveMqBroker#ADDRESS host} for the {@link OpenGammaServer#BROKER broker}. */
     public String getBrokerAddress() {
-        return attributeWhenReady(OpenGammaDemoServer.BROKER, ActiveMQBroker.ADDRESS);
+        return attributeWhenReady(OpenGammaServer.BROKER, ActiveMQBroker.ADDRESS);
     }
 
-    /** Return the {@link ActiveMqBroker#OPEN_WIRE_PORT port} for the {@link OpenGammaDemoServer#BROKER broker}. */
+    /** Return the {@link ActiveMqBroker#OPEN_WIRE_PORT port} for the {@link OpenGammaServer#BROKER broker}. */
     public Integer getBrokerPort() {
-        return attributeWhenReady(OpenGammaDemoServer.BROKER, ActiveMQBroker.OPEN_WIRE_PORT);
+        return attributeWhenReady(OpenGammaServer.BROKER, ActiveMQBroker.OPEN_WIRE_PORT);
     }
 
-    /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#BROKER broker}. */
+    /** Return the {@code host:port} location for the {@link OpenGammaServer#BROKER broker}. */
     public String getBrokerLocation() {
         String address = getBrokerAddress();
         Integer port = getBrokerPort();
@@ -82,10 +82,10 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         return broker.toString();
     }
 
-    /** Return the {@code host:port} location for the {@link OpenGammaDemoServer#DATABASE database}. */
+    /** Return the {@code host:port} location for the {@link OpenGammaServer#DATABASE database}. */
     public String getDatabaseLocation() {
-        String address = attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.ADDRESS);
-        Integer port = attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.POSTGRESQL_PORT);
+        String address = attributeWhenReady(OpenGammaServer.DATABASE, PostgreSqlNode.ADDRESS);
+        Integer port = attributeWhenReady(OpenGammaServer.DATABASE, PostgreSqlNode.POSTGRESQL_PORT);
         HostAndPort database = HostAndPort.fromParts(address, port);
         return database.toString();
     }
@@ -152,10 +152,10 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
         getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(scriptContents), scriptDestination);
 
         // wait for DB up, of course
-        attributeWhenReady(OpenGammaDemoServer.DATABASE, PostgreSqlNode.SERVICE_UP);
+        attributeWhenReady(OpenGammaServer.DATABASE, PostgreSqlNode.SERVICE_UP);
 
         // Use the database server's location  and id as a mutex to prevents multiple execution of the initialisation code
-        Entity database = entity.getConfig(OpenGammaDemoServer.DATABASE);
+        Entity database = entity.getConfig(OpenGammaServer.DATABASE);
         if (database!=null) {
             SshMachineLocation machine = (SshMachineLocation) Iterables.find(database.getLocations(), Predicates.instanceOf(SshMachineLocation.class));
             try {
@@ -224,7 +224,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
     @Override
     public void launch() {
         // and wait for broker up also
-        attributeWhenReady(OpenGammaDemoServer.BROKER, PostgreSqlNode.SERVICE_UP);
+        attributeWhenReady(OpenGammaServer.BROKER, PostgreSqlNode.SERVICE_UP);
         
         newScript(LAUNCHING)
                 .updateTaskAndFailOnNonZeroResultCode()

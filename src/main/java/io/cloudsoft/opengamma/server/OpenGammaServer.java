@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.demo;
+package io.cloudsoft.opengamma.server;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.basic.ConfigKeys;
@@ -13,8 +13,8 @@ import brooklyn.event.basic.BasicAttributeSensorAndConfigKey;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.util.flags.SetFromFlag;
 
-@ImplementedBy(OpenGammaDemoServerImpl.class)
-public interface OpenGammaDemoServer extends SoftwareProcess, WebAppService {
+@ImplementedBy(OpenGammaServerImpl.class)
+public interface OpenGammaServer extends SoftwareProcess, WebAppService {
 
     @SetFromFlag("debug")
     ConfigKey<Boolean> DEBUG_MODE = new BasicConfigKey<Boolean>(Boolean.class,

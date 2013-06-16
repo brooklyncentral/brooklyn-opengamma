@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.fabric;
+package io.cloudsoft.amp.entities;
 
 import brooklyn.entity.Entity;
 import brooklyn.entity.proxying.ImplementedBy;

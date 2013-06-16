@@ -1,11 +1,11 @@
 package io.cloudsoft.opengamma;
 
-import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
-import io.cloudsoft.opengamma.demo.OpenGammaMonitoringAggregation;
-import io.cloudsoft.opengamma.fabric.BasicStartable;
-import io.cloudsoft.opengamma.policy.ServiceFailureDetector;
-import io.cloudsoft.opengamma.policy.ServiceReplacer;
-import io.cloudsoft.opengamma.policy.ServiceRestarter;
+import io.cloudsoft.amp.entities.BasicStartable;
+import io.cloudsoft.amp.policies.ServiceFailureDetector;
+import io.cloudsoft.amp.policies.ServiceReplacer;
+import io.cloudsoft.amp.policies.ServiceRestarter;
+import io.cloudsoft.opengamma.server.OpenGammaServer;
+import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +47,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     public static final String DEFAULT_LOCATION = "localhost";
 
     @CatalogConfig(label="Debug Mode", priority=2)
-    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaDemoServer.DEBUG_MODE;
+    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaServer.DEBUG_MODE;
 
     /** build the application */
     @Override
@@ -63,10 +63,10 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
                 EntitySpecs.spec(ControlledDynamicWebAppCluster.class)
                     .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                     .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, 
-                            EntitySpecs.spec(OpenGammaDemoServer.class)
+                            EntitySpecs.spec(OpenGammaServer.class)
                                     .displayName("OpenGamma Server")
-                                    .configure(OpenGammaDemoServer.BROKER, broker)
-                                    .configure(OpenGammaDemoServer.DATABASE, database))
+                                    .configure(OpenGammaServer.BROKER, broker)
+                                    .configure(OpenGammaServer.DATABASE, database))
                     .displayName("OpenGamma Server Cluster (Web/View/Calc)")
                 );
 

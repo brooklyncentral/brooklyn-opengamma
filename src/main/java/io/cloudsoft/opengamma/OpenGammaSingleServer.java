@@ -1,6 +1,6 @@
 package io.cloudsoft.opengamma;
 
-import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
+import io.cloudsoft.opengamma.server.OpenGammaServer;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
     public static final String DEFAULT_LOCATION = "localhost";
 
     @CatalogConfig(label="Debug Mode", priority=2)
-    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaDemoServer.DEBUG_MODE;
+    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaServer.DEBUG_MODE;
 
     @Override
     public void init() {
@@ -42,11 +42,11 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
 
         // Add the OG server configured with external services
-        OpenGammaDemoServer web = addChild(
-                EntitySpecs.spec(OpenGammaDemoServer.class)
+        OpenGammaServer web = addChild(
+                EntitySpecs.spec(OpenGammaServer.class)
                         .displayName("OpenGamma Server")
-                        .configure(OpenGammaDemoServer.BROKER, broker)
-                        .configure(OpenGammaDemoServer.DATABASE, database));
+                        .configure(OpenGammaServer.BROKER, broker)
+                        .configure(OpenGammaServer.DATABASE, database));
 
         addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(web,  
                 WebAppServiceConstants.ROOT_URL,

@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.fabric;
+package io.cloudsoft.amp.entities;
 
 import brooklyn.entity.basic.Description;
 import brooklyn.entity.basic.MethodEffector;

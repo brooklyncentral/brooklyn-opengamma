@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.fabric;
+package io.cloudsoft.amp.entities;
 
 import java.util.Arrays;
 import java.util.Map;

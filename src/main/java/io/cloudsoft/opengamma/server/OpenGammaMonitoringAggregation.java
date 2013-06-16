@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.demo;
+package io.cloudsoft.opengamma.server;
 
 import java.util.List;
 
@@ -26,9 +26,9 @@ import com.google.common.collect.ImmutableList;
 
 public class OpenGammaMonitoringAggregation {
 
-    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST = OpenGammaDemoServer.PROCESSING_TIME_PER_SECOND_LAST;
-    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW = OpenGammaDemoServer.PROCESSING_TIME_PER_SECOND_IN_WINDOW;
-    public static final AttributeSensor<Integer> VIEW_PROCESSES_COUNT = OpenGammaDemoServer.VIEW_PROCESSES_COUNT;
+    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST = OpenGammaServer.PROCESSING_TIME_PER_SECOND_LAST;
+    public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_IN_WINDOW = OpenGammaServer.PROCESSING_TIME_PER_SECOND_IN_WINDOW;
+    public static final AttributeSensor<Integer> VIEW_PROCESSES_COUNT = OpenGammaServer.VIEW_PROCESSES_COUNT;
     
     public static final AttributeSensor<Double> PROCESSING_TIME_PER_SECOND_LAST_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "webapp.reqs.processingTime.perSec.last.perNode", "Mean across cluster of percentage of time spent processing requests (most recent period; cf CPU utilisation)");

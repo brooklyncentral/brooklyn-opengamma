@@ -1,4 +1,4 @@
-package io.cloudsoft.opengamma.demo;
+package io.cloudsoft.opengamma.server;
 
 import java.util.Map;
 
@@ -30,9 +30,9 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.net.HostAndPort;
 
-public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements OpenGammaDemoServer, UsesJmx {
+public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGammaServer, UsesJmx {
 
-    private static final Logger log = LoggerFactory.getLogger(OpenGammaDemoServerImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(OpenGammaServerImpl.class);
     
     private HttpFeed httpFeed;
     private JmxObjectNameAdapter jettyStatsHandler;
@@ -47,7 +47,7 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
 
     @Override
     public Class getDriverInterface() {
-        return OpenGammaDemoDriver.class;
+        return OpenGammaServerDriver.class;
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
@@ -133,9 +133,9 @@ public class OpenGammaDemoServerImpl extends SoftwareProcessImpl implements Open
                     if (input != null && Boolean.FALSE.equals(input)) {
                         Boolean prev = setAttribute(SERVICE_UP, false);
                         if (Boolean.TRUE.equals(prev)) {
-                            LOG.warn("Could not reach {} over JMX, marking service-down", OpenGammaDemoServerImpl.this);
+                            LOG.warn("Could not reach {} over JMX, marking service-down", OpenGammaServerImpl.this);
                         } else {
-                            if (LOG.isDebugEnabled()) LOG.debug("Could not reach {} over JMX, service-up was previously {}", OpenGammaDemoServerImpl.this, prev);
+                            if (LOG.isDebugEnabled()) LOG.debug("Could not reach {} over JMX, service-up was previously {}", OpenGammaServerImpl.this, prev);
                         }
                     }
                     return null;

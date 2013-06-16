@@ -1,12 +1,12 @@
 package io.cloudsoft.opengamma;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
-import io.cloudsoft.opengamma.demo.OpenGammaMonitoringAggregation;
-import io.cloudsoft.opengamma.fabric.DynamicRegionsFabric;
-import io.cloudsoft.opengamma.policy.ServiceFailureDetector;
-import io.cloudsoft.opengamma.policy.ServiceReplacer;
-import io.cloudsoft.opengamma.policy.ServiceRestarter;
+import io.cloudsoft.amp.entities.DynamicRegionsFabric;
+import io.cloudsoft.amp.policies.ServiceFailureDetector;
+import io.cloudsoft.amp.policies.ServiceReplacer;
+import io.cloudsoft.amp.policies.ServiceRestarter;
+import io.cloudsoft.opengamma.server.OpenGammaServer;
+import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 
 import java.util.List;
 import java.util.Map;
@@ -60,7 +60,7 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
     public static final String DEFAULT_LOCATION = "localhost";
 
     @CatalogConfig(label="Debug Mode", priority=2)
-    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaDemoServer.DEBUG_MODE;
+    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaServer.DEBUG_MODE;
 
     @CatalogConfig(label="Multi-Region", priority=1)
     public static final ConfigKey<Boolean> SUPPORT_MULTIREGION = new BasicConfigKey<Boolean>(Boolean.class,
@@ -79,7 +79,7 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
                         .displayName("Load-Balanced Cluster") 
                         .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                         .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, 
-                            EntitySpecs.spec(OpenGammaDemoServer.class).displayName("OpenGamma Server")) );
+                            EntitySpecs.spec(OpenGammaServer.class).displayName("OpenGamma Server")) );
                 
                 initAggregatingMetrics(ogWebCluster);
                 initResilience(ogWebCluster);
