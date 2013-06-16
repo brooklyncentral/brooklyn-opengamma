@@ -1,13 +1,16 @@
 package io.cloudsoft.opengamma;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import io.cloudsoft.amp.entities.BasicStartable;
+import io.cloudsoft.amp.entities.BasicStartable.LocationsFilter;
 import io.cloudsoft.amp.entities.DynamicRegionsFabric;
 import io.cloudsoft.amp.policies.ServiceFailureDetector;
 import io.cloudsoft.amp.policies.ServiceReplacer;
 import io.cloudsoft.amp.policies.ServiceRestarter;
-import io.cloudsoft.opengamma.server.OpenGammaServer;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
+import io.cloudsoft.opengamma.server.OpenGammaServer;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -29,14 +32,15 @@ import brooklyn.entity.basic.EntityFactory;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.StartableApplication;
+import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.group.DynamicFabric;
+import brooklyn.entity.messaging.activemq.ActiveMQBroker;
 import brooklyn.entity.proxy.AbstractController;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.entity.trait.Changeable;
 import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
-import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppService;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.event.SensorEvent;
@@ -71,7 +75,18 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
     public void init() {
         StringConfigMap config = getManagementContext().getConfig();
         
-        // factory for creating the OG server cluster, passed to fabric, or used directly in   
+        // First define the stock service entities (message bus broker and database server) for OG
+        
+        BasicStartable backend = addChild(EntitySpecs.spec(BasicStartable.class)
+                .displayName("OpenGamma Back-End")
+                .configure(BasicStartable.LOCATIONS_FILTER, LocationsFilter.USE_FIRST_LOCATION));
+        final ActiveMQBroker broker = backend.addChild(EntitySpecs.spec(ActiveMQBroker.class));
+        final PostgreSqlNode database = backend.addChild(EntitySpecs.spec(PostgreSqlNode.class)
+                .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
+
+        // Now add the server tier, either multi-region (fabric) or fixed single-region (cluster)
+
+        // factory for creating the OG server cluster, passed to fabric, or used directly here to make a cluster   
         EntityFactory<Entity> ogWebClusterFactory = new EntityFactory<Entity>() {
             @Override
             public Entity newEntity(@SuppressWarnings("rawtypes") Map flags, Entity parent) {
@@ -79,7 +94,9 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
                         .displayName("Load-Balanced Cluster") 
                         .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                         .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, 
-                            EntitySpecs.spec(OpenGammaServer.class).displayName("OpenGamma Server")) );
+                            EntitySpecs.spec(OpenGammaServer.class).displayName("OpenGamma Server")
+                            .configure(OpenGammaServer.BROKER, broker)
+                            .configure(OpenGammaServer.DATABASE, database)) );
                 
                 initAggregatingMetrics(ogWebCluster);
                 initResilience(ogWebCluster);
@@ -176,13 +193,20 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
     public static void main(String[] argv) {
         List<String> args = Lists.newArrayList(argv);
         String port =  CommandLineUtil.getCommandLineOption(args, "--port", "8081+");
-        String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
+        
+        List<String> locations = new ArrayList<String>();
+        while (true) {
+            String l = CommandLineUtil.getCommandLineOption(args, "--location", null);
+            if (l!=null) locations.add(l);
+            else break;
+        }
+        if (locations.isEmpty()) locations.add(DEFAULT_LOCATION);
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                  .application(EntitySpecs.appSpec(OpenGammaGlobalCluster.class)
                          .displayName("OpenGamma Elastic Multi-Region"))
                  .webconsolePort(port)
-                 .location(location)
+                 .locations(locations)
                  .start();
              
         Entities.dumpInfo(launcher.getApplications());
