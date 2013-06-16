@@ -235,7 +235,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     @Override
     public boolean isRunning() {
-        return newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), CHECK_RUNNING)
+        return newScript(MutableMap.of("usePidFile", "opengamma/og-brooklyn.pid"), CHECK_RUNNING)
                 // XXX ps --pid is not portable so can't use their scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh status").
                 .execute() == 0;
@@ -243,7 +243,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
 
     @Override
     public void stop() {
-        newScript(MutableMap.of("usePidFile", "opengamma/og-examples.pid"), STOPPING)
+        newScript(MutableMap.of("usePidFile", "opengamma/og-brooklyn.pid"), STOPPING)
                 // XXX ps --pid is not portable so can't use their scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh stop").
                 .execute();
