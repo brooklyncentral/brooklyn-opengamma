@@ -3,6 +3,7 @@ package io.cloudsoft.opengamma;
 import static com.google.common.base.Preconditions.checkNotNull;
 import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
 import io.cloudsoft.opengamma.demo.OpenGammaMonitoringAggregation;
+import io.cloudsoft.opengamma.fabric.DynamicRegionsFabric;
 import io.cloudsoft.opengamma.policy.ServiceFailureDetector;
 import io.cloudsoft.opengamma.policy.ServiceReplacer;
 import io.cloudsoft.opengamma.policy.ServiceRestarter;
@@ -35,16 +36,17 @@ import brooklyn.entity.proxy.AbstractController;
 import brooklyn.entity.proxying.EntitySpecs;
 import brooklyn.entity.trait.Changeable;
 import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
+import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppService;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.event.SensorEvent;
 import brooklyn.event.SensorEventListener;
+import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.basic.PortRanges;
 import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.util.CommandLineUtil;
 import brooklyn.util.MutableMap;
-import brooklyn.util.text.StringFunctions;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.ImmutableList;
@@ -60,20 +62,25 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
     @CatalogConfig(label="Debug Mode", priority=2)
     public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaDemoServer.DEBUG_MODE;
 
+    @CatalogConfig(label="Multi-Region", priority=1)
+    public static final ConfigKey<Boolean> SUPPORT_MULTIREGION = new BasicConfigKey<Boolean>(Boolean.class,
+            "opengamma.multiregion", "Whether to run multi-region", true);
+
     /** build the application */
     @Override
     public void init() {
         StringConfigMap config = getManagementContext().getConfig();
         
+        // factory for creating the OG server cluster, passed to fabric, or used directly in   
         EntityFactory<Entity> ogWebClusterFactory = new EntityFactory<Entity>() {
             @Override
             public Entity newEntity(@SuppressWarnings("rawtypes") Map flags, Entity parent) {
                 ControlledDynamicWebAppCluster ogWebCluster = parent.addChild(EntitySpecs.spec(ControlledDynamicWebAppCluster.class)
+                        .displayName("Load-Balanced Cluster") 
                         .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                         .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, 
-                            EntitySpecs.spec(OpenGammaDemoServer.class).displayName("OpenGamma Server"))
-                            .displayName("OpenGamma Server Cluster")
-                        );
+                            EntitySpecs.spec(OpenGammaDemoServer.class).displayName("OpenGamma Server")) );
+                
                 initAggregatingMetrics(ogWebCluster);
                 initResilience(ogWebCluster);
                 initElasticity(ogWebCluster);
@@ -81,9 +88,10 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
             }
         };
 
+        // use fabric by default, unless no password for geoscaling is set
         String geoscalingPassword = config.getFirst("brooklyn.geoscaling.password");
         
-        if (geoscalingPassword!=null) {
+        if (getConfig(SUPPORT_MULTIREGION) && geoscalingPassword!=null) {
             log.info("GeoScaling support detected. Running in multi-cloud mode.");
             
             GeoscalingDnsService geoDns = addChild(EntitySpecs.spec(GeoscalingDnsService.class)
@@ -93,8 +101,8 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
                     .configure("primaryDomainName", checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain")) 
                     .configure("smartSubdomainName", "brooklyn"));
 
-            DynamicFabric webFabric = addChild(EntitySpecs.spec(DynamicFabric.class)
-                    .displayName("Web Fabric")
+            DynamicRegionsFabric webFabric = addChild(EntitySpecs.spec(DynamicRegionsFabric.class)
+                    .displayName("Dynamic Regions Fabric")
                     .configure(DynamicFabric.FACTORY, ogWebClusterFactory)
                     .configure(AbstractController.PROXY_HTTP_PORT, PortRanges.fromCollection(ImmutableList.of(80,"8000+"))) );
 
@@ -109,10 +117,14 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
             addEnricher(new SensorTransformingEnricher<String,String>(geoDns, Attributes.HOSTNAME, WebAppServiceConstants.ROOT_URL, 
                     OpenGammaMonitoringAggregation.surround("http://","/")));
         } else {
-            log.warn("No password set for GeoScaling. Creating "+this+" in single-cluster mode.");
+            if (!getConfig(SUPPORT_MULTIREGION))
+                log.warn("No password set for GeoScaling. Creating "+this+" in single-cluster mode.");
+            else
+                log.info("Configured not to have multi-region support. Creating "+this+" in single-cluster mode.");
+            
+            Entity ogWebCluster = ogWebClusterFactory.newEntity(MutableMap.of(), this);
             
             // bubble up sensors (kpi's and access info) - in single-cluster mode it all comes from cluster (or is hard-coded)
-            Entity ogWebCluster = ogWebClusterFactory.newEntity(MutableMap.of(), this);
             OpenGammaMonitoringAggregation.promoteKpis(this, ogWebCluster);
             setAttribute(OpenGammaMonitoringAggregation.REGIONS_COUNT, 1);
             addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(ogWebCluster,  
@@ -168,7 +180,7 @@ public class OpenGammaGlobalCluster extends AbstractApplication implements Start
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                  .application(EntitySpecs.appSpec(OpenGammaGlobalCluster.class)
-                         .displayName("OpenGamma Cluster Application"))
+                         .displayName("OpenGamma Elastic Multi-Region"))
                  .webconsolePort(port)
                  .location(location)
                  .start();
