@@ -8,15 +8,16 @@ For screenshots, see: https://github.com/cloudsoft/brooklyn-opengamma/tree/maste
 
 ### Setup 1:  Getting and Building
 
-You must have the following repo installed and compiled (`git clone`, or download the code as a ZIP):
+You must have the following repo installed and compiled (clone or fork the code, or download a ZIP), e.g.:
 
-* `https://github.com/cloudsoft/brooklyn-opengamma`
+    git clone http://github.com/cloudsoft/brooklyn-opengamma
+    cd brooklyn-opengamma
 
 To compile brooklyn-opengamma, in the root of this project, you'll need maven 3 and javac 1.6 or higher;
-then simply run:
+then build a redistributable binary assembly:
 
-* `mvn clean install` -- to build a JAR (suitable for use with Brooklyn CLI)
-* `mvn clean assembly:assembly` -- to build an executable assembly
+    mvn clean assembly:assembly
+    ls -al target/brooklyn-opengamma-*-bin.tar.gz
 
 
 ### Setup 2:  Credentials
