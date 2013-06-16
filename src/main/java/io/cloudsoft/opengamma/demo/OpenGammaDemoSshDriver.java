@@ -35,6 +35,7 @@ import com.google.common.net.HostAndPort;
 public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaDemoDriver {
 
     private static final String OPENGAMMA_SUBDIR = "opengamma";
+    private static final String TEMP_SUBDIR = OPENGAMMA_SUBDIR + "/temp";
     private static final String SCRIPT_SUBDIR = OPENGAMMA_SUBDIR + "/scripts";
     private static final String CONFIG_SUBDIR = OPENGAMMA_SUBDIR + "/config";
     private static final String COMMON_SUBDIR = CONFIG_SUBDIR + "/common";
@@ -116,6 +117,7 @@ public class OpenGammaDemoSshDriver extends JavaSoftwareProcessSshDriver impleme
             .updateTaskAndFailOnNonZeroResultCode()
             .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName("opengamma")+" "+"opengamma")
             // create the dirs where we will put config files
+            .body.append("mkdir -p " + TEMP_SUBDIR)
             .body.append("mkdir -p " + COMMON_SUBDIR)
             .body.append("mkdir -p " + BROOKLYN_SUBDIR)
             .execute();
