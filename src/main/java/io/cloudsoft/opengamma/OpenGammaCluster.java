@@ -134,7 +134,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             addEnricher(new SensorTransformingEnricher<String,String>(geoDns, Attributes.HOSTNAME, WebAppServiceConstants.ROOT_URL, 
                     OpenGammaMonitoringAggregation.surround("http://","/")));
         } else {
-            if (!getConfig(SUPPORT_MULTIREGION))
+            if (getConfig(SUPPORT_MULTIREGION))
                 log.warn("No password set for GeoScaling. Creating "+this+" in single-cluster mode.");
             else
                 log.info("Configured not to have multi-region support. Creating "+this+" in single-cluster mode.");
