@@ -86,6 +86,8 @@ public class ServiceRestarter extends AbstractPolicy {
     AtomicReference<Long> lastFailureTime = new AtomicReference<Long>();
     
     // TODO semaphores would be better to allow at-most-one-blocking behaviour
+    // FIXME as this is called in message-dispatch (single threaded) we should do most of this in a new submitted task
+    // (as has been done in ServiceReplacer)
     protected synchronized void onDetectedFailure(SensorEvent<Object> event) {
         LOG.warn("ServiceRestarter acting on failure detected at "+entity+" ("+event.getValue()+")");
         long current = System.currentTimeMillis();

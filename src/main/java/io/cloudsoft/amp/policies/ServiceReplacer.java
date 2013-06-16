@@ -9,6 +9,7 @@ import brooklyn.config.ConfigKey;
 import brooklyn.entity.Group;
 import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.Entities;
+import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.Lifecycle;
 import brooklyn.entity.group.DynamicCluster;
@@ -17,6 +18,7 @@ import brooklyn.event.SensorEvent;
 import brooklyn.event.SensorEventListener;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.policy.basic.AbstractPolicy;
+import brooklyn.util.MutableMap;
 import brooklyn.util.config.ConfigBag;
 import brooklyn.util.flags.SetFromFlag;
 
@@ -69,19 +71,27 @@ public class ServiceReplacer extends AbstractPolicy {
     }
     
     // TODO semaphores would be better to allow at-most-one-blocking behaviour
-    protected synchronized void onDetectedFailure(SensorEvent<Object> event) {
+    protected synchronized void onDetectedFailure(final SensorEvent<Object> event) {
         LOG.warn("ServiceReplacer acting on failure detected at "+event.getSource()+" ("+event.getValue()+", child of "+entity+")");
-        try {
-            Entities.invokeEffectorWithArgs(entity, entity, DynamicCluster.REPLACE_MEMBER, event.getSource().getId()).get();
-        } catch (Exception e) {
-            // FIXME replaceMember fails if stop fails on the old node; should resolve that more gracefully than this
-            if (e.toString().contains("stopping") && e.toString().contains(event.getSource().getId())) {
-                LOG.info("ServiceReplacer: ignoring error reported from stopping failed node "+event.getSource());
-                return;
+        ((EntityInternal)entity).getManagementSupport().getExecutionContext().submit(MutableMap.of(), new Runnable() {
+
+            @Override
+            public void run() {
+                try {
+                    Entities.invokeEffectorWithArgs(entity, entity, DynamicCluster.REPLACE_MEMBER, event.getSource().getId()).get();
+                } catch (Exception e) {
+                    // FIXME replaceMember fails if stop fails on the old node; should resolve that more gracefully than this
+                    if (e.toString().contains("stopping") && e.toString().contains(event.getSource().getId())) {
+                        LOG.info("ServiceReplacer: ignoring error reported from stopping failed node "+event.getSource());
+                        return;
+                    }
+
+                    onReplacementFailed("Replace failure (error "+e+") at "+entity+": "+event.getValue());
+                }
+
             }
-            
-            onReplacementFailed("Replace failure (error "+e+") at "+entity+": "+event.getValue());
-        }
+
+        });
     }
 
     protected void onReplacementFailed(String msg) {
