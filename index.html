@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>Brooklyn OpenGamma by cloudsoft</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>Brooklyn OpenGamma</h1>
+          <h2>Brooklyn deployment and management of the OpenGamma financial analytics platform</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <a href="https://github.com/cloudsoft/brooklyn-opengamma/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/cloudsoft/brooklyn-opengamma/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/cloudsoft/brooklyn-opengamma" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+          <h2>
+<a name="quick-start" class="anchor" href="#quick-start"><span class="octicon octicon-link"></span></a>Quick Start</h2>
+
+<h3>
+<a name="getting-and-building" class="anchor" href="#getting-and-building"><span class="octicon octicon-link"></span></a>Getting and Building</h3>
+
+<p>You must have the repo cloned or downloaded. To compile <code>brooklyn-opengamma</code> you'll need Maven 3 and Java 1.6 or higher, then simply run:</p>
+
+<ul>
+<li>
+<code>mvn clean install</code> to build a JAR suitable for use with the Brooklyn CLI</li>
+<li>
+<code>mvn clean assembly:single</code> to build a standalone executable JAR</li>
+</ul><h3>
+<a name="credentials" class="anchor" href="#credentials"><span class="octicon octicon-link"></span></a>Credentials</h3>
+
+<p>To run, you'll need to specify credentials for your preferred cloud.  This can be done in <code>~/.brooklyn/brooklyn.properties</code> using this syntax, shown here for AWS EC2:</p>
+
+<pre><code>brooklyn.jclouds.aws-ec2.identity = AAAAAAAAAAAA
+brooklyn.jclouds.aws-ec2.credential = xxxxxxxxxxxxxxxxxxxxxxxx
+</code></pre>
+
+<p>Alternatively these can be set as shell environment parameters or JVM system properties.</p>
+
+<p>Many other public clouds are supported, as well as groups of existing machines, custom endpoints for private and hybrid clouds, and specifying custom keys and passphrases. For more information see the section on <em>Locations</em> in the <a href="http://brooklyn.io/use/guide/defining-applications/common-usage.html">Brooklyn User Guide</a></p>
+
+<h3>
+<a name="running" class="anchor" href="#running"><span class="octicon octicon-link"></span></a>Running</h3>
+
+<p>The <code>mvn assembly:single</code> command creates a distribution archive named <code>brooklyn-opengamma-0.1.0-SNAPSHOT-bin.tar.gz</code>. Unpack this and run the demo as follows:</p>
+
+<pre><code>% cd target
+% tar zxf brooklyn-opengamma-0.1.0-SNAPSHOT-bin.tar.gz
+% cd brooklyn-opengamma-0.1.0-SNAPSHOT
+% ./start.sh --location LOCATION
+</code></pre>
+
+<p>Where <em>LOCATION</em> is either:</p>
+
+<ul>
+<li>A cloud or environment you've set up as above, such as <code>aws-ec2:us-east-1</code> : Not every environment has been tested, of course, but dependencies are fairly simple, mainly java and gcc, so it should be fairly portable, and quick to fix any targets which need attention. Let us know if we can help with some environment where this doesn't work! </li>
+<li>
+<code>localhost</code> : This bundle can run on a localhost Linux or OS X system, standing up multiple processes, scaling out, and resilient to process failures (or deliberate kills). This requires passwordless <code>ssh localhost</code> access, and (for nginx) development tools including <code>gcc</code> and the <code>pcre</code> library. (On OS X this can usually be achieved by installing <em>XCode</em> and XCode Command-Line tools, both from Apple, and <code>sudo port install pcre</code> using MacPorts, or equivalent with brew.)<br>
+</li>
+</ul><p>You can also run the demo using the <code>brooklyn</code> CLI tool, similarly to how the <a href="http://brooklyncentral.github.com/">Brooklyn documentation</a> describes running the examples, like this:</p>
+
+<pre><code>% export BROOKLYN_CLASSPATH=target/brooklyn-opengamma-0.1.0-SNAPSHOT.jar
+% brooklyn launch --app io.cloudsoft.opengamma.OpenGammaCluster \
+    --location aws-ec2:us-east-1
+</code></pre>
+
+<p>And, of course, as it's just Java code, you can run it in any number of ways from an IDE, by accessing the <code>io.cloudsoft.opengamma.OpenGammaCluster</code> class and examining the <code>main</code> method.</p>
+
+<h3>
+<a name="demo" class="anchor" href="#demo"><span class="octicon octicon-link"></span></a>Demo</h3>
+
+<p>After about 5 minutes, when all the VMs have been created and the services have started, the console will print out a summary of the entire application state. This will include the OpenGamma web/view console URL, which should appear towards the end as the <strong>webapp.url</strong> property, like this:</p>
+
+<pre><code>service.state: running
+webapp.url: http://ec2-54-28-5-19.compute.amazonaws.com:8000/
+Policies:
+  {name=Controller targets tracker, running=true}
+</code></pre>
+
+<p>In the meantime you can follow the progress by opening the <a href="http://localhost:8081">Brooklyn console</a> in your browser. In the console, you can:</p>
+
+<ul>
+<li>See the sensors on the root of the <strong>OpenGamma Cluster Application</strong>, including a link to OpenGamma itself</li>
+<li>Drill down into the individual OpenGamma servers, and see detailed metrics (search for <em>time</em> or <em>reqs</em>)</li>
+<li>Step up to the parent nodes to see selected aggregated metrics (do the same search)</li>
+<li>See the policies on the OG server nodes, on the DWAC parent, and on nginx </li>
+<li>Observe the <strong>Summary</strong> for the server nodes; kill the process and/or the VM, and watch it get removed from nginx, the policies kick in to recover, and then the recovered node updated in nginx</li>
+</ul><p>To destroy the VMs provisioned, either invoke <code>stop</code> on the root of the application in the Brooklyn console or use the management console of your cloud.  VM's are not destroyed simply by killing Brooklyn.</p>
+
+<h2>
+<a name="screenshots" class="anchor" href="#screenshots"><span class="octicon octicon-link"></span></a>Screenshots</h2>
+
+<p><img src="https://raw.github.com/cloudsoft/brooklyn-opengamma/master/docs/screenshots/brooklyn.png" alt="Brooklyn Screenshot"><img src="https://raw.github.com/cloudsoft/brooklyn-opengamma/master/docs/screenshots/opengamma.png" alt="OpenGamma Screenshot"></p>
+
+<h2>
+<a name="more-about-brooklyn" class="anchor" href="#more-about-brooklyn"><span class="octicon octicon-link"></span></a>More about Brooklyn</h2>
+
+<p>Brooklyn is a code library and framework for managing distributed applications in the cloud.  It has been used to create this project for rolling out OpenGamma, as well as many other distributed software packages.</p>
+
+<p>This project can be extended for more complex topologies, additional applications which run alongside OpenGamma core, and to develop sophisticated management policies to scale or tune the cluster for specific applications.</p>
+
+<p>For more information consider:</p>
+
+<ul>
+<li>Visiting the open-source Brooklyn <a href="http://brooklyncentral.github.com">home page</a>
+</li>
+<li>Forking the Brooklyn project on <a href="http://github.com/brooklyncentral/brooklyn">GitHub</a>
+</li>
+<li>Joining the Brooklyn <a href="https://groups.google.com/forum/#!forum/brooklyn-users">discussion list</a> </li>
+</ul><p>For commercial enquiries including bespoke development and paid support contact <a href="http://www.cloudsoftcorp.com/">Cloudsoft Corp.</a>, the supporters of Brooklyn, at <strong><a href="mailto:info@cloudsoftcorp.com">info@cloudsoftcorp.com</a></strong>.</p>
+
+<hr><p>This software is Copyright 2013 by Cloudsoft Corp.; Released as open source under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License, Version 2.0</a>.</p>
+        </section>
+
+        <footer>
+          Brooklyn OpenGamma is maintained by <a href="https://github.com/cloudsoft">cloudsoft</a><br>
+          This page was generated by <a href="http://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+                  <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-15947686-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+      </div>
+    </div>
+  </body>
+</html>
