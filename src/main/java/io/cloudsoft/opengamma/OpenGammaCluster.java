@@ -2,6 +2,7 @@ package io.cloudsoft.opengamma;
 
 import io.cloudsoft.opengamma.demo.OpenGammaDemoServer;
 import io.cloudsoft.opengamma.demo.OpenGammaMonitoringAggregation;
+import io.cloudsoft.opengamma.fabric.BasicStartable;
 import io.cloudsoft.opengamma.policy.ServiceFailureDetector;
 import io.cloudsoft.opengamma.policy.ServiceReplacer;
 import io.cloudsoft.opengamma.policy.ServiceRestarter;
@@ -51,12 +52,13 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     /** build the application */
     @Override
     public void init() {
-        // Add external services (message bus broker and database server) for cluster
-        // TODO make these more configurable
-        ActiveMQBroker broker = addChild(EntitySpecs.spec(ActiveMQBroker.class));
-        PostgreSqlNode database = addChild(EntitySpecs.spec(PostgreSqlNode.class)
+        // Add external services (message bus broker and database server) for OG
+        BasicStartable backend = addChild(EntitySpecs.spec(BasicStartable.class).displayName("OpenGamma Back-End"));
+        ActiveMQBroker broker = backend.addChild(EntitySpecs.spec(ActiveMQBroker.class));
+        PostgreSqlNode database = backend.addChild(EntitySpecs.spec(PostgreSqlNode.class)
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
 
+        // Add the server tier
         ControlledDynamicWebAppCluster web = addChild(
                 EntitySpecs.spec(ControlledDynamicWebAppCluster.class)
                     .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
