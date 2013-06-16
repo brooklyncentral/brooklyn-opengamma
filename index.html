@@ -37,14 +37,17 @@
 <h3>
 <a name="getting-and-building" class="anchor" href="#getting-and-building"><span class="octicon octicon-link"></span></a>Getting and Building</h3>
 
-<p>You must have the repo cloned or downloaded. To compile <code>brooklyn-opengamma</code> you'll need Maven 3 and Java 1.6 or higher, then simply run:</p>
+<p>You must have the repo cloned or downloaded. To compile <code>brooklyn-opengamma</code> you'll need Maven 3 and Java 1.6 or higher, then simply run the following commands:</p>
 
-<ul>
-<li>
-<code>mvn clean install</code> to build a JAR suitable for use with the Brooklyn CLI</li>
-<li>
-<code>mvn clean assembly:single</code> to build a standalone executable JAR</li>
-</ul><h3>
+<pre><code>% git clone https://github.com/cloudsoft/brooklyn-opengamma.git
+% cd brooklyn-opengamma
+% mvn clean install
+% mvn assembly:single
+</code></pre>
+
+<p>This will build a JAR suitable for use with the Brooklyn CLI, and the last command will optionally create a standalone executable JAR.</p>
+
+<h3>
 <a name="credentials" class="anchor" href="#credentials"><span class="octicon octicon-link"></span></a>Credentials</h3>
 
 <p>To run, you'll need to specify credentials for your preferred cloud.  This can be done in <code>~/.brooklyn/brooklyn.properties</code> using this syntax, shown here for AWS EC2:</p>
