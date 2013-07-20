@@ -21,10 +21,10 @@ public interface OpenGammaServer extends SoftwareProcess, WebAppService {
             "opengamma.debug", "Whether to run in debug mode", true);
 
     // give it 2m to start up, by default
-    ConfigKey<Integer> START_TIMEOUT = new BasicConfigKey<Integer>(ConfigKeys.START_TIMEOUT, 2*60);
+    ConfigKey<Integer> START_TIMEOUT = ConfigKeys.newConfigKeyWithDefault(ConfigKeys.START_TIMEOUT, 2*60);
 
     @SetFromFlag("version")
-    ConfigKey<String> SUGGESTED_VERSION = new BasicConfigKey<String>(SoftwareProcess.SUGGESTED_VERSION, "1.2.0");
+    ConfigKey<String> SUGGESTED_VERSION = ConfigKeys.newConfigKeyWithDefault(SoftwareProcess.SUGGESTED_VERSION, "1.2.0");
 
     @SetFromFlag("downloadUrl")
     BasicAttributeSensorAndConfigKey<String> DOWNLOAD_URL = new BasicAttributeSensorAndConfigKey<String>(

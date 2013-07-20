@@ -14,7 +14,7 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.5.0</brooklyn.version>
+        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
     </properties>
 
     <dependencies>
