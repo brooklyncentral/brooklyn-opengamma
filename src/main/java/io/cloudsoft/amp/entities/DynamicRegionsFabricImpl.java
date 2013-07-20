@@ -26,22 +26,6 @@ import brooklyn.util.exceptions.Exceptions;
 public class DynamicRegionsFabricImpl extends DynamicFabricImpl implements DynamicRegionsFabric {
 
     private static final Logger log = LoggerFactory.getLogger(DynamicRegionsFabricImpl.class);
-    
-    public DynamicRegionsFabricImpl() {
-        this(MutableMap.of(), null);
-    }
-
-    public DynamicRegionsFabricImpl(Map properties) {
-        this (properties, null);
-    }
-    
-    public DynamicRegionsFabricImpl(Entity parent) {
-        this(MutableMap.of(), parent);
-    }
-
-    public DynamicRegionsFabricImpl(Map properties, Entity parent) {
-        super(properties, parent);
-    }
 
     @Override
     public String addRegion(String location) {

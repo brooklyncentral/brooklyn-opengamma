@@ -12,13 +12,12 @@ import brooklyn.BrooklynVersion;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
 import brooklyn.entity.java.JavaSoftwareProcessSshDriver;
 import brooklyn.location.basic.SshMachineLocation;
-import brooklyn.util.MutableMap;
 import brooklyn.util.NetworkUtils;
 import brooklyn.util.ResourceUtils;
+import brooklyn.util.collections.MutableMap;
 import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.CommonCommands;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 
 public class ActiveMQSshDriver extends JavaSoftwareProcessSshDriver implements ActiveMQDriver {

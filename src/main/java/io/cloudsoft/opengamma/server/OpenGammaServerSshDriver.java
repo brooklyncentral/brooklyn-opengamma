@@ -18,8 +18,8 @@ import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensor;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
-import brooklyn.util.MutableMap;
 import brooklyn.util.ResourceUtils;
+import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.ssh.SshTool;
 import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
@@ -54,7 +54,7 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
     // unintuitive that .get() doesn't work (because the task isn't submitted)
     private <T> T attributeWhenReady(ConfigKey<? extends Entity> target, AttributeSensor<T> sensor) {
         try {
-            return Tasks.resolveValue(
+            return (T) Tasks.resolveValue(
                     DependentConfiguration.attributeWhenReady(entity.getConfig(target), sensor),
                     sensor.getType(),
                     entity.getExecutionContext(),

@@ -20,9 +20,9 @@ import brooklyn.event.basic.BasicNotificationSensor;
 import brooklyn.policy.basic.AbstractPolicy;
 import brooklyn.policy.ha.HASensors;
 import brooklyn.policy.ha.HASensors.FailureDescriptor;
-import brooklyn.util.Time;
 import brooklyn.util.config.ConfigBag;
 import brooklyn.util.flags.SetFromFlag;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Preconditions;
 
