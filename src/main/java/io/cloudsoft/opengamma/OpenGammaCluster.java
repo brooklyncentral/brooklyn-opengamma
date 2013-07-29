@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.catalog.Catalog;
 import brooklyn.catalog.CatalogConfig;
 import brooklyn.config.ConfigKey;
 import brooklyn.config.StringConfigMap;
@@ -27,6 +28,7 @@ import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.Attributes;
+import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityFactory;
 import brooklyn.entity.basic.EntityLocal;
@@ -48,14 +50,18 @@ import brooklyn.event.SensorEventListener;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.basic.PortRanges;
+import brooklyn.policy.Policy;
 import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.util.CommandLineUtil;
-import brooklyn.util.MutableMap;
+import brooklyn.util.collections.MutableMap;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 
+@Catalog(name="OpenGamma Analytics", description="Multi-region, elastic version of " +
+		"leading open-source financial analytics package with default data-sources",
+		iconUrl="classpath://io/cloudsoft/opengamma/opengamma.png")
 public class OpenGammaCluster extends AbstractApplication implements StartableApplication {
     
     private static final long serialVersionUID = 997984655016594134L;
@@ -63,13 +69,27 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     
     public static final String DEFAULT_LOCATION = "localhost";
 
-    @CatalogConfig(label="Debug Mode", priority=2)
-    public static final ConfigKey<Boolean> DEBUG_MODE = OpenGammaServer.DEBUG_MODE;
-
     @CatalogConfig(label="Multi-Region", priority=1)
     public static final ConfigKey<Boolean> SUPPORT_MULTIREGION = new BasicConfigKey<Boolean>(Boolean.class,
             "opengamma.multiregion", "Whether to run multi-region", true);
 
+    @CatalogConfig(label="Auto-Scaling Enabled", priority=3)
+    public static final ConfigKey<Boolean> ENABLE_AUTOSCALING = new BasicConfigKey<Boolean>(Boolean.class,
+            "opengamma.autoscaling.enabled", "Whether to enable auto-scaling", true);
+
+    @CatalogConfig(label="Minimum cluster size", priority=2.1)
+    public static final ConfigKey<Integer> MIN_SIZE = ConfigKeys.newIntegerConfigKey(
+            "opengamma.autoscaling.size.min", "Minimum number of compute intances per cluster (also initial size)", 2);
+
+    @CatalogConfig(label="Maximum cluster size", priority=2.2)
+    public static final ConfigKey<Integer> MAX_SIZE = ConfigKeys.newIntegerConfigKey(
+            "opengamma.autoscaling.size.max", "Maximum number of compute intances per cluster", 5);
+
+    @CatalogConfig(label="Views/Server Target", priority=3.1)
+    public static final ConfigKey<Double> VIEWS_PER_SERVER_SCALING_TARGET = ConfigKeys.newDoubleConfigKey(
+            "opengamma.autoscaling.viewsPerServer.target", "Number of views per server to trigger scaling up", 1.0d);
+
+    
     /** build the application */
     @Override
     public void init() {
@@ -183,11 +203,20 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
      * allowing an (artificially low) max of 1.2 per node, 
      * so as soon as you have 3 view processes a scale-out is forced */
     protected void initElasticity(ControlledDynamicWebAppCluster web) {
-        web.getCluster().addPolicy(AutoScalerPolicy.builder().
+        boolean scalingEnabled = getConfig(ENABLE_AUTOSCALING);
+        double target = getConfig(VIEWS_PER_SERVER_SCALING_TARGET);
+        Policy policy = AutoScalerPolicy.builder().
                 metric(OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT_PER_NODE).
-                metricRange(0.8, 1.2).
-                sizeRange(2, 5).
-                build());
+                metricRange(target*0.9, target + 0.1).
+                sizeRange(getConfig(MIN_SIZE), getConfig(MAX_SIZE)).
+                build();
+        web.getCluster().addPolicy(policy);
+        if (!scalingEnabled) {
+            policy.suspend();
+            log.info("AutoScaler policy disabled when creating "+web);
+        } else {
+            log.info("AutoScaler policy (target "+target+") created for "+web);
+        }
     }
 
     public static void main(String[] argv) {
