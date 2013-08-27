@@ -9,6 +9,7 @@ import brooklyn.BrooklynVersion;
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
+import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.drivers.downloads.DownloadResolver;
@@ -23,7 +24,7 @@ import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.ssh.SshTool;
 import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
-import brooklyn.util.ssh.CommonCommands;
+import brooklyn.util.ssh.BashCommands;
 import brooklyn.util.task.Tasks;
 
 import com.google.common.base.Predicates;
@@ -52,12 +53,13 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
 
     // FIXME should not have to jump through these hoops
     // unintuitive that .get() doesn't work (because the task isn't submitted)
+    @SuppressWarnings("unchecked")
     private <T> T attributeWhenReady(ConfigKey<? extends Entity> target, AttributeSensor<T> sensor) {
         try {
             return (T) Tasks.resolveValue(
                     DependentConfiguration.attributeWhenReady(entity.getConfig(target), sensor),
                     sensor.getType(),
-                    entity.getExecutionContext(),
+                    ((EntityInternal)entity).getExecutionContext(),
                     "Getting "+sensor+" from "+target);
         } catch (Exception e) {
             throw Exceptions.propagate(e);
@@ -97,8 +99,8 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         String saveAs = resolver.getFilename();
 
         List<String> commands = ImmutableList.<String>builder()
-                .addAll(CommonCommands.downloadUrlAs(urls, saveAs))
-                .add(CommonCommands.INSTALL_TAR)
+                .addAll(BashCommands.commandsToDownloadUrlsAs(urls, saveAs))
+                .add(BashCommands.INSTALL_TAR)
                 .add("tar xvfz "+saveAs)
                 .build();
 

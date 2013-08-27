@@ -2,22 +2,18 @@ package io.cloudsoft.opengamma.server;
 
 import java.util.List;
 
-import javax.annotation.Nullable;
-
 import brooklyn.enricher.CustomAggregatingEnricher;
 import brooklyn.enricher.HttpLatencyDetector;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
-import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicFabric;
 import brooklyn.entity.java.UsesJavaMXBeans;
 import brooklyn.entity.trait.Changeable;
 import brooklyn.entity.webapp.DynamicWebAppCluster;
-import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensor;
-import brooklyn.util.MutableMap;
+import brooklyn.util.collections.MutableMap;
 
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
@@ -39,7 +35,7 @@ public class OpenGammaMonitoringAggregation {
     public static final AttributeSensor<Double> VIEW_PROCESSES_COUNT_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "opengamma.views.processes.active.count.perNode", "Mean across cluster of number of active view processes");
 
-    public static final AttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW = UsesJavaMXBeans.AVG_PROCESS_CPU_TIME_FRACTION;
+    public static final AttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW = UsesJavaMXBeans.PROCESS_CPU_TIME_FRACTION_IN_WINDOW;
     
     public static final AttributeSensor<Double> PROCESS_CPU_TIME_FRACTION_IN_WINDOW_PER_NODE =
             new BasicAttributeSensor<Double>(Double.class, "java.metrics.processCpuTime.fraction.avg.per.node", "Mean across cluster of the fraction of time (since the last event) consumed as cpu time");
@@ -73,7 +69,9 @@ public class OpenGammaMonitoringAggregation {
         }
         
         for (List<? extends AttributeSensor<? extends Number>> es : averagingEnricherSetup) {
+            @SuppressWarnings("unchecked")
             AttributeSensor<Number> t = (AttributeSensor<Number>) es.get(0);
+            @SuppressWarnings("unchecked")
             AttributeSensor<Double> average = (AttributeSensor<Double>) es.get(1);
             CustomAggregatingEnricher<?,?> averager = CustomAggregatingEnricher.newAveragingEnricher(MutableMap.of("allMembers", true), t, average);
             cluster.addEnricher(averager);
@@ -103,7 +101,7 @@ public class OpenGammaMonitoringAggregation {
                 OpenGammaMonitoringAggregation.OG_SERVER_COUNT));
     }
 
-    // TODO move to StringFunctions
+    // TODO use StringFunctions.surround when available
     public static Function<String,String> surround(final String prefix, final String suffix) {
         Preconditions.checkNotNull(prefix);
         Preconditions.checkNotNull(suffix);

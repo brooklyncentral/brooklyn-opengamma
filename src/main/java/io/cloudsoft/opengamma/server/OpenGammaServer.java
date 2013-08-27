@@ -1,6 +1,7 @@
 package io.cloudsoft.opengamma.server;
 
 import brooklyn.config.ConfigKey;
+import brooklyn.entity.basic.BrooklynConfigKeys;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
@@ -21,7 +22,7 @@ public interface OpenGammaServer extends SoftwareProcess, WebAppService {
             "opengamma.debug", "Whether to run in debug mode", true);
 
     // give it 2m to start up, by default
-    ConfigKey<Integer> START_TIMEOUT = ConfigKeys.newConfigKeyWithDefault(ConfigKeys.START_TIMEOUT, 2*60);
+    ConfigKey<Integer> START_TIMEOUT = ConfigKeys.newConfigKeyWithDefault(BrooklynConfigKeys.START_TIMEOUT, 2*60);
 
     @SetFromFlag("version")
     ConfigKey<String> SUGGESTED_VERSION = ConfigKeys.newConfigKeyWithDefault(SoftwareProcess.SUGGESTED_VERSION, "1.2.0");

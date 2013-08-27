@@ -16,7 +16,7 @@ import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.StartableApplication;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.messaging.activemq.ActiveMQBroker;
-import brooklyn.entity.proxying.EntitySpecs;
+import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.launcher.BrooklynLauncher;
@@ -25,6 +25,8 @@ import brooklyn.util.CommandLineUtil;
 import com.google.common.collect.Lists;
 
 public class OpenGammaSingleServer extends AbstractApplication implements StartableApplication {
+
+    private static final long serialVersionUID = -5843483608682545456L;
 
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaSingleServer.class);
 
@@ -37,13 +39,13 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
     public void init() {
         // Add external services (message bus broker and database server)
         // TODO make these more configurable
-        ActiveMQBroker broker = addChild(EntitySpecs.spec(ActiveMQBroker.class));
-        PostgreSqlNode database = addChild(EntitySpecs.spec(PostgreSqlNode.class)
+        ActiveMQBroker broker = addChild(EntitySpec.create(ActiveMQBroker.class));
+        PostgreSqlNode database = addChild(EntitySpec.create(PostgreSqlNode.class)
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
 
         // Add the OG server configured with external services
         OpenGammaServer web = addChild(
-                EntitySpecs.spec(OpenGammaServer.class)
+                EntitySpec.create(OpenGammaServer.class)
                         .displayName("OpenGamma Server")
                         .configure(OpenGammaServer.BROKER, broker)
                         .configure(OpenGammaServer.DATABASE, database));
@@ -60,7 +62,7 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
-                 .application(EntitySpecs.appSpec(OpenGammaSingleServer.class)
+                 .application(EntitySpec.create(OpenGammaSingleServer.class)
                          .displayName("OpenGamma Server Example"))
                  .webconsolePort(port)
                  .location(location)
