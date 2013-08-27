@@ -29,6 +29,7 @@ import brooklyn.util.time.Duration;
 import com.google.common.base.Functions;
 import com.google.common.net.HostAndPort;
 
+@SuppressWarnings("serial")
 public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGammaServer, UsesJmx {
 
     private static final Logger log = LoggerFactory.getLogger(OpenGammaServerImpl.class);
@@ -43,6 +44,7 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
         database = getConfig(DATABASE);
     }
 
+    @SuppressWarnings("rawtypes")
     @Override
     public Class getDriverInterface() {
         return OpenGammaServerDriver.class;
@@ -76,7 +78,7 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
                 .baseUri(rootUrl)
                 .poll(new HttpPollConfig<Boolean>(SERVICE_UP)
                         .onSuccess(HttpValueFunctions.responseCodeEquals(200))
-                        .onError(Functions.constant(false)))
+                        .onFailureOrException(Functions.constant(false)))
                 .build();
 
     }

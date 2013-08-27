@@ -1,12 +1,6 @@
 package io.cloudsoft.opengamma;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import io.cloudsoft.amp.entities.BasicStartable;
-import io.cloudsoft.amp.entities.BasicStartable.LocationsFilter;
-import io.cloudsoft.amp.entities.DynamicRegionsFabric;
-import io.cloudsoft.amp.policies.ServiceFailureDetector;
-import io.cloudsoft.amp.policies.ServiceReplacer;
-import io.cloudsoft.amp.policies.ServiceRestarter;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 import io.cloudsoft.opengamma.server.OpenGammaServer;
 
@@ -28,6 +22,8 @@ import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.Attributes;
+import brooklyn.entity.basic.BasicStartable;
+import brooklyn.entity.basic.BasicStartable.LocationsFilter;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityFactory;
@@ -38,9 +34,10 @@ import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.group.DynamicFabric;
+import brooklyn.entity.group.DynamicRegionsFabric;
 import brooklyn.entity.messaging.activemq.ActiveMQBroker;
 import brooklyn.entity.proxy.AbstractController;
-import brooklyn.entity.proxying.EntitySpecs;
+import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.entity.trait.Changeable;
 import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppService;
@@ -52,6 +49,9 @@ import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.basic.PortRanges;
 import brooklyn.policy.Policy;
 import brooklyn.policy.autoscaling.AutoScalerPolicy;
+import brooklyn.policy.ha.ServiceFailureDetector;
+import brooklyn.policy.ha.ServiceReplacer;
+import brooklyn.policy.ha.ServiceRestarter;
 import brooklyn.util.CommandLineUtil;
 import brooklyn.util.collections.MutableMap;
 
@@ -97,11 +97,11 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         
         // First define the stock service entities (message bus broker and database server) for OG
         
-        BasicStartable backend = addChild(EntitySpecs.spec(BasicStartable.class)
+        BasicStartable backend = addChild(EntitySpec.create(BasicStartable.class)
                 .displayName("OpenGamma Back-End")
                 .configure(BasicStartable.LOCATIONS_FILTER, LocationsFilter.USE_FIRST_LOCATION));
-        final ActiveMQBroker broker = backend.addChild(EntitySpecs.spec(ActiveMQBroker.class));
-        final PostgreSqlNode database = backend.addChild(EntitySpecs.spec(PostgreSqlNode.class)
+        final ActiveMQBroker broker = backend.addChild(EntitySpec.create(ActiveMQBroker.class));
+        final PostgreSqlNode database = backend.addChild(EntitySpec.create(PostgreSqlNode.class)
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
 
         // Now add the server tier, either multi-region (fabric) or fixed single-region (cluster)
@@ -110,11 +110,11 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         EntityFactory<Entity> ogWebClusterFactory = new EntityFactory<Entity>() {
             @Override
             public Entity newEntity(@SuppressWarnings("rawtypes") Map flags, Entity parent) {
-                ControlledDynamicWebAppCluster ogWebCluster = parent.addChild(EntitySpecs.spec(ControlledDynamicWebAppCluster.class)
+                ControlledDynamicWebAppCluster ogWebCluster = parent.addChild(EntitySpec.create(ControlledDynamicWebAppCluster.class)
                         .displayName("Load-Balanced Cluster") 
                         .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                         .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC, 
-                            EntitySpecs.spec(OpenGammaServer.class).displayName("OpenGamma Server")
+                                EntitySpec.create(OpenGammaServer.class).displayName("OpenGamma Server")
                             .configure(OpenGammaServer.BROKER, broker)
                             .configure(OpenGammaServer.DATABASE, database)) );
                 
@@ -131,14 +131,14 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         if (getConfig(SUPPORT_MULTIREGION) && geoscalingPassword!=null) {
             log.info("GeoScaling support detected. Running in multi-cloud mode.");
             
-            GeoscalingDnsService geoDns = addChild(EntitySpecs.spec(GeoscalingDnsService.class)
+            GeoscalingDnsService geoDns = addChild(EntitySpec.create(GeoscalingDnsService.class)
                     .displayName("GeoScaling DNS")
                     .configure("username", checkNotNull(config.getFirst("brooklyn.geoscaling.username"), "username"))
                     .configure("password", geoscalingPassword)
                     .configure("primaryDomainName", checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain")) 
                     .configure("smartSubdomainName", "brooklyn"));
 
-            DynamicRegionsFabric webFabric = addChild(EntitySpecs.spec(DynamicRegionsFabric.class)
+            DynamicRegionsFabric webFabric = addChild(EntitySpec.create(DynamicRegionsFabric.class)
                     .displayName("Dynamic Regions Fabric")
                     .configure(DynamicFabric.FACTORY, ogWebClusterFactory)
                     .configure(AbstractController.PROXY_HTTP_PORT, PortRanges.fromCollection(ImmutableList.of(80,"8000+"))) );
@@ -232,7 +232,8 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         if (locations.isEmpty()) locations.add(DEFAULT_LOCATION);
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
-                 .application(EntitySpecs.appSpec(OpenGammaCluster.class)
+                 .application(EntitySpec.create(OpenGammaCluster.class)
+                         .additionalInterfaces(StartableApplication.class)
                          .displayName("OpenGamma Elastic Multi-Region"))
                  .webconsolePort(port)
                  .locations(locations)
