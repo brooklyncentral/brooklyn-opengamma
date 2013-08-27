@@ -39,12 +39,12 @@ _Locations_ in the [Brooklyn User Guide](http://brooklyn.io/use/guide/defining-a
 ### Running
 
 The `mvn assembly:single` command creates a distribution archive named
-`brooklyn-opengamma-0.1.0-SNAPSHOT-bin.tar.gz`. Unpack this and run the
+`brooklyn-opengamma-0.2.0-SNAPSHOT-bin.tar.gz`. Unpack this and run the
 demo as follows:
 
     % cd target
-    % tar zxf brooklyn-opengamma-0.1.0-SNAPSHOT-bin.tar.gz
-    % cd brooklyn-opengamma-0.1.0-SNAPSHOT
+    % tar zxf brooklyn-opengamma-0.2.0-SNAPSHOT-bin.tar.gz
+    % cd brooklyn-opengamma-0.2.0-SNAPSHOT
     % ./start.sh --location LOCATION
 
 Where *LOCATION* is either:
@@ -66,7 +66,7 @@ You can also run the demo using the `brooklyn` command-line tool, using the same
 techniques as described in the Brooklyn documentation for [running the
 examples](http://brooklyncentral.github.io/use/examples/index.html), like this:
 
-    % export BROOKLYN_CLASSPATH=target/brooklyn-opengamma-0.1.0-SNAPSHOT.jar
+    % export BROOKLYN_CLASSPATH=target/brooklyn-opengamma-0.2.0-SNAPSHOT.jar
     % brooklyn launch --app io.cloudsoft.opengamma.OpenGammaCluster \
         --location aws-ec2:us-east-1
 
