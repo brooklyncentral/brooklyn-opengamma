@@ -26,8 +26,6 @@ import com.google.common.collect.Lists;
 
 public class OpenGammaSingleServer extends AbstractApplication implements StartableApplication {
 
-    private static final long serialVersionUID = -5843483608682545456L;
-
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaSingleServer.class);
 
     public static final String DEFAULT_LOCATION = "localhost";

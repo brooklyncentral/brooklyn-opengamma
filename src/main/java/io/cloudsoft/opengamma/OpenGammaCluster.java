@@ -29,8 +29,8 @@ import brooklyn.entity.basic.EntityFactory;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.StartableApplication;
-import brooklyn.entity.database.postgresql.PostgreSqlSpecs;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
+import brooklyn.entity.database.postgresql.PostgreSqlSpecs;
 import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicCluster;
 import brooklyn.entity.group.DynamicFabric;
@@ -65,7 +65,6 @@ import com.google.common.collect.Lists;
 		iconUrl="classpath://io/cloudsoft/opengamma/opengamma.png")
 public class OpenGammaCluster extends AbstractApplication implements StartableApplication {
     
-    private static final long serialVersionUID = 997984655016594134L;
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaCluster.class);
     
     public static final String DEFAULT_LOCATION = "localhost";

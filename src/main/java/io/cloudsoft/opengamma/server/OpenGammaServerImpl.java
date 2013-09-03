@@ -29,7 +29,6 @@ import brooklyn.util.time.Duration;
 import com.google.common.base.Functions;
 import com.google.common.net.HostAndPort;
 
-@SuppressWarnings("serial")
 public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGammaServer, UsesJmx {
 
     private static final Logger log = LoggerFactory.getLogger(OpenGammaServerImpl.class);
