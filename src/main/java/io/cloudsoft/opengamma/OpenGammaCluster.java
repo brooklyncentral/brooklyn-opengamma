@@ -21,7 +21,6 @@ import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
-import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.BasicStartable;
 import brooklyn.entity.basic.BasicStartable.LocationsFilter;
 import brooklyn.entity.basic.ConfigKeys;
@@ -30,6 +29,7 @@ import brooklyn.entity.basic.EntityFactory;
 import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.StartableApplication;
+import brooklyn.entity.database.postgresql.PostgreSqlSpecs;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicCluster;
@@ -46,6 +46,7 @@ import brooklyn.event.SensorEvent;
 import brooklyn.event.SensorEventListener;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
 import brooklyn.location.basic.PortRanges;
 import brooklyn.policy.Policy;
 import brooklyn.policy.autoscaling.AutoScalerPolicy;
@@ -77,19 +78,18 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     public static final ConfigKey<Boolean> ENABLE_AUTOSCALING = new BasicConfigKey<Boolean>(Boolean.class,
             "opengamma.autoscaling.enabled", "Whether to enable auto-scaling", true);
 
-    @CatalogConfig(label="Minimum cluster size", priority=2.1)
+    @CatalogConfig(label="Minimum Cluster Size", priority=2.1)
     public static final ConfigKey<Integer> MIN_SIZE = ConfigKeys.newIntegerConfigKey(
             "opengamma.autoscaling.size.min", "Minimum number of compute intances per cluster (also initial size)", 2);
 
-    @CatalogConfig(label="Maximum cluster size", priority=2.2)
+    @CatalogConfig(label="Maximum Cluster Size", priority=2.2)
     public static final ConfigKey<Integer> MAX_SIZE = ConfigKeys.newIntegerConfigKey(
             "opengamma.autoscaling.size.max", "Maximum number of compute intances per cluster", 5);
 
-    @CatalogConfig(label="Views/Server Target", priority=3.1)
+    @CatalogConfig(label="Views-per-Server Target", priority=3.1)
     public static final ConfigKey<Double> VIEWS_PER_SERVER_SCALING_TARGET = ConfigKeys.newDoubleConfigKey(
             "opengamma.autoscaling.viewsPerServer.target", "Number of views per server to trigger scaling up", 1.0d);
 
-    
     /** build the application */
     @Override
     public void init() {
@@ -101,7 +101,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
                 .displayName("OpenGamma Back-End")
                 .configure(BasicStartable.LOCATIONS_FILTER, LocationsFilter.USE_FIRST_LOCATION));
         final ActiveMQBroker broker = backend.addChild(EntitySpec.create(ActiveMQBroker.class));
-        final PostgreSqlNode database = backend.addChild(EntitySpec.create(PostgreSqlNode.class)
+        final PostgreSqlNode database = backend.addChild(postgresSpec()
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
 
         // Now add the server tier, either multi-region (fabric) or fixed single-region (cluster)
@@ -151,8 +151,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             OpenGammaMonitoringAggregation.promoteKpis(this, webFabric);
             addEnricher(new SensorTransformingEnricher<Integer,Integer>(webFabric, Changeable.GROUP_SIZE, 
                     OpenGammaMonitoringAggregation.REGIONS_COUNT, Functions.<Integer>identity()));
-            addEnricher(new SensorTransformingEnricher<String,String>(geoDns, Attributes.HOSTNAME, WebAppServiceConstants.ROOT_URL, 
-                    OpenGammaMonitoringAggregation.surround("http://","/")));
+            addEnricher(new SensorPropagatingEnricher(geoDns, WebAppServiceConstants.ROOT_URL));
         } else {
             if (getConfig(SUPPORT_MULTIREGION))
                 log.warn("No password set for GeoScaling. Creating "+this+" in single-cluster mode.");
@@ -167,6 +166,11 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(ogWebCluster,  
                     WebAppServiceConstants.ROOT_URL));
         }
+    }
+
+    /** can be overridden, e.g. to use chef entity */
+    protected EntitySpec<? extends PostgreSqlNode> postgresSpec() {
+        return PostgreSqlSpecs.spec();
     }
 
     /** aggregate metrics and selected KPI's */
@@ -230,6 +234,9 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             else break;
         }
         if (locations.isEmpty()) locations.add(DEFAULT_LOCATION);
+        if (locations.contains("localhost") && !LocalhostMachineProvisioningLocation.isSudoAllowed())
+            throw new IllegalStateException("Detected attempt to run "+OpenGammaCluster.class+" on localhost when sudo is not enabled.\n" +
+            		"Enable sudo and try again!");
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                  .application(EntitySpec.create(OpenGammaCluster.class)

@@ -1,11 +1,9 @@
 package io.cloudsoft.opengamma.server;
 
 import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import brooklyn.BrooklynVersion;
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Entities;
@@ -19,11 +17,9 @@ import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensor;
 import brooklyn.event.basic.DependentConfiguration;
 import brooklyn.location.basic.SshMachineLocation;
-import brooklyn.util.ResourceUtils;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.ssh.SshTool;
-import brooklyn.util.jmx.jmxrmi.JmxRmiAgent;
 import brooklyn.util.ssh.BashCommands;
 import brooklyn.util.task.Tasks;
 
@@ -111,8 +107,6 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
 
     @Override
     public void customize() {
-        installJava();
-
         DownloadResolver resolver = Entities.newDownloader(this);
         // Copy the install files to the run-dir
         newScript(CUSTOMIZING)
@@ -178,55 +172,12 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
                 machine.releaseMutex(database.getId());
             }
         }
-
-        /*
-         * CODE FROM HERE DOWN TO LAUNCH copied from ActiveMQ -- 
-         * TODO replace with off-the-shelf conveniences when using brooklyn 0.6.0 (snapshot)
-         */
-        // Copy JMX agent Jar to server
-        getMachine().copyTo(new ResourceUtils(this).getResourceFromUrl(getJmxRmiAgentJarUrl()), getJmxRmiAgentJarDestinationFilePath());
-    }
-
-    public String getJmxRmiAgentJarBasename() {
-        return "brooklyn-jmxrmi-agent-" + BrooklynVersion.get() + ".jar";
-    }
-
-    public String getJmxRmiAgentJarUrl() {
-        return "classpath://" + getJmxRmiAgentJarBasename();
-    }
-
-    public String getJmxRmiAgentJarDestinationFilePath() {
-        return getRunDir() + "/" + getJmxRmiAgentJarBasename();
-    }
-
-    @Override
-    protected Map<String, ?> getJmxJavaSystemProperties() {
-        MutableMap<String, ?> opts = MutableMap.copyOf(super.getJmxJavaSystemProperties());
-        if (opts != null && opts.size() > 0) {
-            opts.remove("com.sun.management.jmxremote.port");
-        }
-        return opts;
-    }
-
-    /**
-     * Return any JVM arguments required, other than the -D defines returned by {@link #getJmxJavaSystemProperties()}
-     */
-    protected List<String> getJmxJavaConfigOptions() {
-        List<String> result = new ArrayList<String>();
-        // TODO do this based on config property in UsesJmx
-        String jmxOpt = String.format("-javaagent:%s -D%s=%d -D%s=%d -Djava.rmi.server.hostname=%s",
-                getJmxRmiAgentJarDestinationFilePath(),
-                JmxRmiAgent.JMX_SERVER_PORT_PROPERTY, getJmxPort(),
-                JmxRmiAgent.RMI_REGISTRY_PORT_PROPERTY, getRmiServerPort(),
-                getHostname());
-        result.add(jmxOpt);
-        return result;
     }
 
     @Override
     public void launch() {
         // and wait for broker up also
-        attributeWhenReady(OpenGammaServer.BROKER, PostgreSqlNode.SERVICE_UP);
+        attributeWhenReady(OpenGammaServer.BROKER, ActiveMQBroker.SERVICE_UP);
         
         newScript(LAUNCHING)
                 .updateTaskAndFailOnNonZeroResultCode()
@@ -246,7 +197,7 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
     @Override
     public void stop() {
         newScript(MutableMap.of("usePidFile", "opengamma/og-brooklyn.pid"), STOPPING)
-                // XXX ps --pid is not portable so can't use their scripts
+                // XXX ps --pid is not portable so we can't rely on the OG default scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh stop").
                 .execute();
     }
