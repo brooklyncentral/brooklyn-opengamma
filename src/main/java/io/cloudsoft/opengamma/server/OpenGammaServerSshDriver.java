@@ -181,7 +181,10 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         
         newScript(LAUNCHING)
                 .updateTaskAndFailOnNonZeroResultCode()
-                .body.append("cd opengamma", "nohup scripts/og-brooklyn.sh start")
+                .body.append("cd opengamma", "nohup scripts/og-brooklyn.sh start",
+                        /* sleep needed sometimes else the java process - the last thing done by the script -
+                         * does not seem to start; it is being invoked as `exec (setsid) java ... < /dev/null &` */
+                        "sleep 1")
                 .execute();
     }
 
