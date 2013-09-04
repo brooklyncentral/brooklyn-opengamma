@@ -48,6 +48,7 @@ import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
 import brooklyn.location.basic.PortRanges;
+import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.policy.Policy;
 import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.policy.ha.ServiceFailureDetector;
@@ -169,7 +170,10 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
 
     /** can be overridden, e.g. to use chef entity */
     protected EntitySpec<? extends PostgreSqlNode> postgresSpec() {
-        return PostgreSqlSpecs.spec();
+        return PostgreSqlSpecs.spec()
+                // make it a reasonably big DB instance
+                .configure(SoftwareProcess.PROVISIONING_PROPERTIES.subKey(
+                        JcloudsLocationConfig.MIN_RAM.getName()), "8192");
     }
 
     /** aggregate metrics and selected KPI's */
@@ -238,8 +242,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             		"Enable sudo and try again!");
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
-                 .application(EntitySpec.create(OpenGammaCluster.class)
-                         .additionalInterfaces(StartableApplication.class)
+                 .application(EntitySpec.create(StartableApplication.class, OpenGammaCluster.class)
                          .displayName("OpenGamma Elastic Multi-Region"))
                  .webconsolePort(port)
                  .locations(locations)

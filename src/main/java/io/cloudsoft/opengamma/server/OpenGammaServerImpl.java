@@ -55,8 +55,8 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
         flags.put("templateBuilder", new PortableTemplateBuilder()
             // need a beefy machine
             .os64Bit(true)
-            .minRam(4096)
-            // use CENTOS for now, just because UBUNTU images in AWS are dodgy (poor java support)
+            .minRam(8192)
+            // either should work... but let's standardise for now
             .osFamily(OsFamily.UBUNTU).osVersionMatches("12.04")
 //          .osFamily(OsFamily.CENTOS)
             );

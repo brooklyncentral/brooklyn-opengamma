@@ -19,8 +19,7 @@ import com.google.common.collect.Lists;
 
 public class OpenGammaClusterChef extends OpenGammaCluster {
 
-    private static final long serialVersionUID = 1358948108629748175L;
-
+    // FIXME failing on EC2 due to chef error
     public static final String DEFAULT_LOCATION = "aws-ec27";
     
     @Override
