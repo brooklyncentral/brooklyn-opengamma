@@ -24,6 +24,18 @@
             <version>${brooklyn.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.jclouds.labs</groupId>
+            <artifactId>abiquo</artifactId>
+            <version>1.6.1-incubating</version>
+        </dependency> 
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-logback-xml</artifactId>
+            <version>${brooklyn.version}</version> 
+            <scope>runtime</scope>  
+            <optional>true</optional>
+        </dependency>           
+        <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-test-support</artifactId>
             <version>${brooklyn.version}</version>
