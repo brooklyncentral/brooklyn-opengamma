@@ -5,6 +5,8 @@ import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 import io.cloudsoft.opengamma.server.OpenGammaServer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -16,11 +18,13 @@ import brooklyn.catalog.Catalog;
 import brooklyn.catalog.CatalogConfig;
 import brooklyn.config.ConfigKey;
 import brooklyn.config.StringConfigMap;
+import brooklyn.enricher.CustomAggregatingEnricher;
 import brooklyn.enricher.HttpLatencyDetector;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
+import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.BasicStartable;
 import brooklyn.entity.basic.BasicStartable.LocationsFilter;
 import brooklyn.entity.basic.ConfigKeys;
@@ -57,8 +61,11 @@ import brooklyn.policy.ha.ServiceRestarter;
 import brooklyn.util.CommandLineUtil;
 import brooklyn.util.collections.MutableMap;
 
+import com.google.common.base.Function;
 import com.google.common.base.Functions;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 @Catalog(name="OpenGamma Analytics", description="Multi-region, elastic version of " +
@@ -103,6 +110,13 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         final ActiveMQBroker broker = backend.addChild(EntitySpec.create(ActiveMQBroker.class));
         final PostgreSqlNode database = backend.addChild(postgresSpec()
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
+        backend.addEnricher(CustomAggregatingEnricher.newEnricher(MutableMap.of("producers", Arrays.asList(broker, database)),
+                Attributes.SERVICE_UP, Attributes.SERVICE_UP,
+                new Function<Collection<Boolean>,Boolean>() {
+                    public Boolean apply(Collection<Boolean> input) {
+                        return !input.isEmpty() && Iterables.all(input, Predicates.equalTo(true));
+                    }
+                }));
 
         // Now add the server tier, either multi-region (fabric) or fixed single-region (cluster)
 
@@ -243,7 +257,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                  .application(EntitySpec.create(StartableApplication.class, OpenGammaCluster.class)
-                         .displayName("OpenGamma Elastic Multi-Region"))
+                         .displayName("OpenGamma Financial Analytics"))
                  .webconsolePort(port)
                  .locations(locations)
                  .start();
