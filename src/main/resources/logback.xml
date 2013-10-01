@@ -1,18 +1,8 @@
-<configuration>
+<configuration scan="true">
 
-  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-    <file>brooklyn-opengamma.log</file>
-    <append>true</append>
-    <encoder>
-      <pattern>%d %-5level %logger{30} [%thread{15}]: %msg%n</pattern>
-    </encoder>
-  </appender>
-
-  <include resource="brooklyn/logback-stdout.xml"/>
-
-  <include resource="brooklyn/logback-excludes.xml"/>
-  <include resource="brooklyn/logback-debug.xml"/>
- 
+  <property name="logging.basename" scope="context" value="brooklyn-opengamma" />
   <logger name="io.cloudsoft" level="DEBUG"/>
+  
+  <include resource="logback-main.xml"/>
     
 </configuration>
