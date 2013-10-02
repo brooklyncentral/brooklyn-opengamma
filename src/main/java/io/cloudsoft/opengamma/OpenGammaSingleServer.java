@@ -16,7 +16,9 @@ import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.StartableApplication;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
 import brooklyn.entity.messaging.activemq.ActiveMQBroker;
+import brooklyn.entity.proxy.nginx.NginxController;
 import brooklyn.entity.proxying.EntitySpec;
+import brooklyn.entity.proxying.EntityTypeRegistry;
 import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.launcher.BrooklynLauncher;
@@ -35,6 +37,9 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
 
     @Override
     public void init() {
+        EntityTypeRegistry typeRegistry = getManagementContext().getEntityManager().getEntityTypeRegistry();
+        typeRegistry.registerImplementation(NginxController.class, CustomNginxControllerImpl.class);
+        
         // Add external services (message bus broker and database server)
         // TODO make these more configurable
         ActiveMQBroker broker = addChild(EntitySpec.create(ActiveMQBroker.class));
