@@ -14,7 +14,7 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
+        <brooklyn.version>0.6.0-M2</brooklyn.version>
     </properties>
 
     <dependencies>
@@ -32,7 +32,7 @@
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-logback-xml</artifactId>
             <version>${brooklyn.version}</version> 
-            <scope>runtime</scope>  
+            <scope>provided</scope>  
             <optional>true</optional>
         </dependency>           
         <dependency>
