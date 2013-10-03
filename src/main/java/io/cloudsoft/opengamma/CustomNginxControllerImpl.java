@@ -86,12 +86,6 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
     private void customizeEntity(Entity entity, AbiquoContext context) {
         log.info(">>> Customizing entity: " + entity.getEntityType().getSimpleName());
         try {
-            /*
-            Datacenter datacenter = enterprise.findAllowedDatacenter(DatacenterPredicates.name("Paris"));
-            List<ExternalNetwork> externalNetworks = listExternalNetworks(enterprise, datacenter);
-            ExternalNetwork externalNetwork = tryFindExternalNetwork(externalNetworks, EXTERNAL_NETWORK_NAME);
-            log.info(">>> Found externalNetwork " + externalNetwork + " in datacenter " + datacenter);
-            */
             JcloudsSshMachineLocation machine = (JcloudsSshMachineLocation) Iterables.get(entity.getLocations(),0);
             String machineName = machine.getNode().getName();
 
@@ -116,28 +110,17 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
                     .addAll(virtualMachine.listAttachedNics())
                     .add(externalIp)
                     .build();
-            reconfigureNICsOnVirtualMachine(context, nics, virtualMachine);
-            
-            /*
-            for (VirtualMachine virtualMachine : vms) {
-                if (virtualMachine.getNameLabel().equals(machine.getNode().getName())) {
-                    List<Ip<?, ?>> nics = appendExternalIpToNICs(externalIp, virtualMachine);
-                    log.info(">>> Setting NIC " + Iterables.toString(nics) + " on virtualMachine("
-                            + virtualMachine.getNameLabel());
-                    reconfigureNICsOnVirtualMachine(context, externalNetwork, nics, virtualMachine);
-                }
-            }
-            */
+            reconfigureNICsOnVirtualMachine(context, externalNetwork, nics, virtualMachine);
         } finally {
             context.close();
         }
     }
 
-   private void reconfigureNICsOnVirtualMachine(AbiquoContext context, List<Ip<?, ?>> nics, VirtualMachine virtualMachine) {
+   private void reconfigureNICsOnVirtualMachine(AbiquoContext context, ExternalNetwork externalNetwork, List<Ip<?, ?>> nics, VirtualMachine virtualMachine) {
       log.info(">>> Attaching NICs " + Iterables.toString(nics) + " to virtualMachine(" + virtualMachine.getNameLabel() + ")");
       MonitoringService monitoringService = context.getMonitoringService();
       ensureVirtualMachineState(virtualMachine, VirtualMachineState.OFF, monitoringService);
-      virtualMachine.setNics(nics);
+      virtualMachine.setNics(externalNetwork, nics);
       monitoringService.getVirtualMachineMonitor().awaitState(VirtualMachineState.OFF, virtualMachine);    
       ensureVirtualMachineState(virtualMachine, VirtualMachineState.ON, monitoringService);
       log.info(">>> Attached NICs : " + Iterables.toString(virtualMachine.listAttachedNics()) + " to virtualMachine(" + virtualMachine.getNameLabel() + ")");
