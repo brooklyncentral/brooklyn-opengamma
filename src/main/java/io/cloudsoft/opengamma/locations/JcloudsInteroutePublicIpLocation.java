@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import javax.annotation.Nullable;
@@ -41,11 +40,9 @@ import brooklyn.location.jclouds.JcloudsLocationCustomizer;
 import brooklyn.location.jclouds.JcloudsMachineNamer;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.location.jclouds.JcloudsUtil;
-import brooklyn.management.AccessController;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.config.ConfigBag;
 import brooklyn.util.exceptions.Exceptions;
-import brooklyn.util.ssh.IptablesCommands;
 import brooklyn.util.text.Strings;
 import brooklyn.util.text.TemplateProcessor;
 
@@ -65,14 +62,25 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
 
     private static final String EXTERNAL_NETWORK_NAME_PREFIX = "CLPU0_IPAC";
 
-    private Location parent;
-    
-    public JcloudsInteroutePublicIpLocation(Location location) {
-        super(MutableMap.copyOf(location.getAllConfig(true)));
-        configure(location.getAllConfig(true));
-        parent = location;
+    /**
+     * Expect caller to use:
+     * {@code LocationSpec.create(JcloudsInteroutePublicIpLocation.class).configure(jcloudsLocation.getAllConfig(true)));}
+     */
+    public JcloudsInteroutePublicIpLocation() {
     }
     
+    /**
+     * @deprecated Use LocationSpec, so no-arg constructor; delete this method when confirm that works!
+     */
+    public JcloudsInteroutePublicIpLocation(JcloudsLocation location) {
+        super(MutableMap.copyOf(location.getAllConfig(true)));
+        //TODO configure called in AbstractLocation<init>, because legacy-style constructor
+        //configure(location.getAllConfig(true));
+    }
+    
+    /**
+     * @deprecated Use LocationSpec, so no-arg constructor; delete this method when confirm that works!
+     */
     public JcloudsInteroutePublicIpLocation(Map<?,?> map) {
         super(map);
     }    
@@ -85,7 +93,7 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
             throw new IllegalStateException("Access controller forbids provisioning in "+this+": "+access.getMsg());
         }
         */
-        ConfigBag setup = ConfigBag.newInstanceExtending(getConfigBag(), parent.getAllConfig(true));
+        ConfigBag setup = ConfigBag.newInstanceExtending(getConfigBag(), flags);
         setCreationString(setup);
         
         final ComputeService computeService = JcloudsUtil.findComputeService(setup);
@@ -211,12 +219,13 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
             NodeMetadata node, LoginCredentials initialCredentials, ConfigBag setup) throws IOException {
         // attach 2nd NIC
         AbiquoContext abiquoContext = abiquoContext();
-        attachSecondNic(node, abiquoContext);
-        String vmHostname = getPublicHostname(node);
+        ExternalIp externalIp = attachSecondNic(node, abiquoContext);
+        String vmHostname = externalIp.getIp();
+        log.info(">>> For VM {} in {}, using IP {}", new Object[] {node.getName(), this, vmHostname});
         return registerJcloudsSshMachineLocation(node, vmHostname, setup);
     }
 
-    private void attachSecondNic(NodeMetadata node, AbiquoContext context) {
+    private ExternalIp attachSecondNic(NodeMetadata node, AbiquoContext context) {
         String machineName = node.getName();
         log.info(">>> Attaching second NIC to " + machineName + " ...");
         try {
@@ -224,10 +233,9 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
             Optional<VirtualMachine> optionalVirtualMachine = Iterables.tryFind(vms,
                     VirtualMachinePredicates.name(machineName));
             if (!optionalVirtualMachine.isPresent()) {
-                String msg = "Cannot find a virtual machine with same JcloudsSshMachineLocation name.\nThe available virtual machines are: "
-                        + Iterables.toString(vms);
-                log.error(msg);
-                return;
+            	String msg = "Cannot find a virtual machine with same JcloudsSshMachineLocation name \""+machineName+"\"";
+            	log.error(msg + ". The available virtual machines are: " + Iterables.toString(vms));
+                throw new IllegalStateException(msg);
             }
             VirtualMachine virtualMachine = optionalVirtualMachine.get();
             Enterprise enterprise = context.getAdministrationService().getCurrentEnterprise();
@@ -240,6 +248,7 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
             List<Ip<?, ?>> nics = ImmutableList.<Ip<?, ?>> builder().addAll(virtualMachine.listAttachedNics())
                     .add(externalIp).build();
             reconfigureNICsOnVirtualMachine(context, externalNetwork, nics, virtualMachine);
+            return externalIp;
         } finally {
             context.close();
         }

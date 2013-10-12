@@ -1,46 +1,17 @@
 package io.cloudsoft.opengamma;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
 import io.cloudsoft.opengamma.locations.JcloudsInteroutePublicIpLocation;
 
-import java.util.Arrays;
-import java.util.List;
-
-import javax.annotation.Nullable;
-
-import org.jclouds.ContextBuilder;
-import org.jclouds.abiquo.AbiquoContext;
-import org.jclouds.abiquo.domain.cloud.VirtualMachine;
-import org.jclouds.abiquo.domain.enterprise.Enterprise;
-import org.jclouds.abiquo.domain.infrastructure.Datacenter;
-import org.jclouds.abiquo.domain.network.ExternalIp;
-import org.jclouds.abiquo.domain.network.ExternalNetwork;
-import org.jclouds.abiquo.domain.network.Ip;
-import org.jclouds.abiquo.domain.network.Network;
-import org.jclouds.abiquo.domain.task.AsyncTask;
-import org.jclouds.abiquo.features.services.MonitoringService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.entity.Effector;
-import brooklyn.entity.Entity;
 import brooklyn.entity.basic.SoftwareProcessDriverLifecycleEffectorTasks;
 import brooklyn.entity.proxy.nginx.NginxControllerImpl;
 import brooklyn.location.Location;
+import brooklyn.location.LocationSpec;
 import brooklyn.location.jclouds.JcloudsLocation;
-import brooklyn.location.jclouds.JcloudsSshMachineLocation;
-import brooklyn.util.ssh.BashCommands;
-import brooklyn.util.time.Duration;
-import brooklyn.util.time.Time;
-
-import com.abiquo.server.core.cloud.VirtualMachineState;
-import com.abiquo.server.core.task.enums.TaskState;
-import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
+import brooklyn.management.ManagementContext;
 
 public class CustomNginxControllerImpl extends NginxControllerImpl {
 
@@ -66,7 +37,11 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
            new SoftwareProcessDriverLifecycleEffectorTasks() {
        protected void startInLocation(Location location) {
            if (location instanceof JcloudsLocation && !(location instanceof JcloudsInteroutePublicIpLocation)) {
-               location = new JcloudsInteroutePublicIpLocation(location);
+        	   ManagementContext managementContext = entity().getManagementContext();
+        	   JcloudsInteroutePublicIpLocation newLoc = managementContext.getLocationManager().createLocation(LocationSpec.create(JcloudsInteroutePublicIpLocation.class)
+        			   .configure(location.getAllConfig(true)));
+        	   log.info("For entity {}, replaced location with {} (old was {})", new Object[] {entity(), newLoc, location});
+               location = newLoc;
            }
            super.startInLocation(location);
        }
