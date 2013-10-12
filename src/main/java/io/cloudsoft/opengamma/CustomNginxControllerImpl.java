@@ -2,6 +2,8 @@ package io.cloudsoft.opengamma;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import io.cloudsoft.opengamma.locations.JcloudsInteroutePublicIpLocation;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -16,18 +18,26 @@ import org.jclouds.abiquo.domain.network.ExternalIp;
 import org.jclouds.abiquo.domain.network.ExternalNetwork;
 import org.jclouds.abiquo.domain.network.Ip;
 import org.jclouds.abiquo.domain.network.Network;
+import org.jclouds.abiquo.domain.task.AsyncTask;
 import org.jclouds.abiquo.features.services.MonitoringService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.entity.Effector;
 import brooklyn.entity.Entity;
+import brooklyn.entity.basic.SoftwareProcessDriverLifecycleEffectorTasks;
 import brooklyn.entity.proxy.nginx.NginxControllerImpl;
 import brooklyn.location.Location;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
+import brooklyn.util.ssh.BashCommands;
+import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
 
 import com.abiquo.server.core.cloud.VirtualMachineState;
+import com.abiquo.server.core.task.enums.TaskState;
 import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -52,6 +62,21 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
            "    proxy_set_header X-Real-IP $remote_addr;\n";
    } 
    
+   private static final SoftwareProcessDriverLifecycleEffectorTasks LIFECYCLE_TASKS =
+           new SoftwareProcessDriverLifecycleEffectorTasks() {
+       protected void startInLocation(Location location) {
+           if (location instanceof JcloudsLocation && !(location instanceof JcloudsInteroutePublicIpLocation)) {
+               location = new JcloudsInteroutePublicIpLocation(location);
+           }
+           super.startInLocation(location);
+       }
+   };
+   
+   public static final Effector<Void> START = LIFECYCLE_TASKS.newStartEffector();
+   public static final Effector<Void> RESTART = LIFECYCLE_TASKS.newRestartEffector();
+   public static final Effector<Void> STOP = LIFECYCLE_TASKS.newStopEffector();
+   
+   /*
    @Override
    protected void preStart() {
        super.preStart();
@@ -103,6 +128,7 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
             List<ExternalNetwork> externalNetworks = listExternalNetworks(enterprise, datacenter);
             ExternalNetwork externalNetwork = tryFindExternalNetwork(externalNetworks, EXTERNAL_NETWORK_NAME_PREFIX);
             log.info(">>> Found externalNetwork " + externalNetwork + " in datacenter " + datacenter);
+
             
             // reconfigure NICs on that virtualMachine
             ExternalIp externalIp = tryFindExternalIp(externalNetwork);
@@ -111,6 +137,12 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
                     .add(externalIp)
                     .build();
             reconfigureNICsOnVirtualMachine(context, externalNetwork, nics, virtualMachine);
+            Time.sleep(Duration.TEN_SECONDS);
+            List<String> commands = ImmutableList.<String>builder()
+                    .add(BashCommands.sudo("/sbin/ip ro del default"))
+                    .add(BashCommands.sudo("/sbin/ip ro add default via " + externalNetwork.getGateway()))
+                    .build();
+            machine.execCommands("reconfigure default gateway(" + externalNetwork.getGateway() + ")" , commands);
         } finally {
             context.close();
         }
@@ -120,7 +152,9 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
       log.info(">>> Attaching NICs " + Iterables.toString(nics) + " to virtualMachine(" + virtualMachine.getNameLabel() + ")");
       MonitoringService monitoringService = context.getMonitoringService();
       ensureVirtualMachineState(virtualMachine, VirtualMachineState.OFF, monitoringService);
-      virtualMachine.setNics(externalNetwork, nics);
+      AsyncTask asyncTask = virtualMachine.setNics(externalNetwork, nics);
+      monitoringService.getAsyncTaskMonitor().awaitCompletion(asyncTask);
+      Preconditions.checkState(asyncTask.getState() == TaskState.FINISHED_SUCCESSFULLY, "Error in task: "+asyncTask);
       monitoringService.getVirtualMachineMonitor().awaitState(VirtualMachineState.OFF, virtualMachine);    
       ensureVirtualMachineState(virtualMachine, VirtualMachineState.ON, monitoringService);
       log.info(">>> Attached NICs : " + Iterables.toString(virtualMachine.listAttachedNics()) + " to virtualMachine(" + virtualMachine.getNameLabel() + ")");
@@ -186,5 +220,5 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
            };
         }
    }
-   
+   */
 }
