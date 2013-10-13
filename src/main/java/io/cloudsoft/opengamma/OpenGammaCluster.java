@@ -138,10 +138,11 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             
             GeoscalingDnsService geoDns = addChild(EntitySpec.create(GeoscalingDnsService.class)
                     .displayName("GeoScaling DNS")
-                    .configure("username", checkNotNull(config.getFirst("brooklyn.geoscaling.username"), "username"))
-                    .configure("password", geoscalingPassword)
-                    .configure("primaryDomainName", checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain")) 
-                    .configure("smartSubdomainName", "brooklyn"));
+                    .configure(GeoscalingDnsService.GEOSCALING_USERNAME, checkNotNull(config.getFirst("brooklyn.geoscaling.username"), "username"))
+                    .configure(GeoscalingDnsService.GEOSCALING_PASSWORD, geoscalingPassword)
+                    .configure(GeoscalingDnsService.GEOSCALING_PRIMARY_DOMAIN_NAME, checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain")) 
+                    .configure(GeoscalingDnsService.GEOSCALING_SMART_SUBDOMAIN_NAME, checkNotNull(config.getFirst(MutableMap.of("defaultIfNone", "brooklyn"), "brooklyn.geoscaling.smartSubdomain"), "smartSubdomain"))
+            		.configure(GeoscalingDnsService.RANDOMIZE_SUBDOMAIN_NAME, true));
 
             DynamicRegionsFabric webFabric = addChild(EntitySpec.create(DynamicRegionsFabric.class)
                     .displayName("Dynamic Regions Fabric")
