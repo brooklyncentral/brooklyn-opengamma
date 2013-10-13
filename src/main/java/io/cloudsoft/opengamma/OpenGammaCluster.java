@@ -61,6 +61,7 @@ import brooklyn.util.collections.MutableMap;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 @Catalog(name="OpenGamma Analytics", description="Multi-region, elastic version of " +
@@ -95,9 +96,10 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
     /** build the application */
     @Override
     public void init() {
-        EntityTypeRegistry typeRegistry = getManagementContext().getEntityManager().getEntityTypeRegistry();
-        typeRegistry.registerImplementation(NginxController.class, CustomNginxControllerImpl.class);
-        
+        if(Iterables.get(getManagementContext().getLocationManager().getLocations(), 0).getDisplayName().startsWith("interoute-")) {
+            EntityTypeRegistry typeRegistry = getManagementContext().getEntityManager().getEntityTypeRegistry();
+            typeRegistry.registerImplementation(NginxController.class, CustomNginxControllerImpl.class);
+        }
         StringConfigMap config = getManagementContext().getConfig();
         
         // First define the stock service entities (message bus broker and database server) for OG
@@ -138,10 +140,11 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             
             GeoscalingDnsService geoDns = addChild(EntitySpec.create(GeoscalingDnsService.class)
                     .displayName("GeoScaling DNS")
-                    .configure("username", checkNotNull(config.getFirst("brooklyn.geoscaling.username"), "username"))
-                    .configure("password", geoscalingPassword)
-                    .configure("primaryDomainName", checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain")) 
-                    .configure("smartSubdomainName", "brooklyn"));
+                    .configure(GeoscalingDnsService.GEOSCALING_USERNAME, checkNotNull(config.getFirst("brooklyn.geoscaling.username"), "username"))
+                    .configure(GeoscalingDnsService.GEOSCALING_PASSWORD, geoscalingPassword)
+                    .configure(GeoscalingDnsService.GEOSCALING_PRIMARY_DOMAIN_NAME, checkNotNull(config.getFirst("brooklyn.geoscaling.primaryDomain"), "primaryDomain")) 
+                    .configure(GeoscalingDnsService.GEOSCALING_SMART_SUBDOMAIN_NAME, checkNotNull(config.getFirst(MutableMap.of("defaultIfNone", "brooklyn"), "brooklyn.geoscaling.smartSubdomain"), "smartSubdomain"))
+            		.configure(GeoscalingDnsService.RANDOMIZE_SUBDOMAIN_NAME, true));
 
             DynamicRegionsFabric webFabric = addChild(EntitySpec.create(DynamicRegionsFabric.class)
                     .displayName("Dynamic Regions Fabric")
