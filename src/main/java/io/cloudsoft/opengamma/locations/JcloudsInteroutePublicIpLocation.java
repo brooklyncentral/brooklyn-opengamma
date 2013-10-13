@@ -3,6 +3,8 @@ package io.cloudsoft.opengamma.locations;
 import static brooklyn.util.GroovyJavaMethods.elvis;
 import static brooklyn.util.GroovyJavaMethods.truth;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.jclouds.compute.options.RunScriptOptions.Builder.overrideLoginCredentials;
+import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -25,10 +27,13 @@ import org.jclouds.abiquo.domain.task.AsyncTask;
 import org.jclouds.abiquo.features.services.MonitoringService;
 import org.jclouds.compute.ComputeService;
 import org.jclouds.compute.RunNodesException;
+import org.jclouds.compute.domain.ExecResponse;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.NodeMetadataBuilder;
 import org.jclouds.compute.domain.Template;
 import org.jclouds.domain.LoginCredentials;
+import org.jclouds.scriptbuilder.domain.Statement;
+import org.jclouds.scriptbuilder.domain.Statements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,6 +222,17 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
     @Override
     public JcloudsSshMachineLocation prepareAndRegisterJcloudsSshMachineLocation(ComputeService computeService,
             NodeMetadata node, LoginCredentials initialCredentials, ConfigBag setup) throws IOException {
+    	// FIXME turning off selinux!
+        Statement statement = Statements.exec("sed -i.brooklyn.bak 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/sysconfig/selinux");
+		ExecResponse response = computeService.runScriptOnNode(node.getId(), statement, 
+                overrideLoginCredentials(initialCredentials).runAsRoot(true));
+		if (response.getExitStatus() == 0) {
+			log.info(">>> For VM {} in {}, set SELINUX to permissive", new Object[] {node.getName(), this});
+		} else {
+			log.error("For VM {} in {}, failed to set SELINUX to permissive: status={}\n\terr={}\n\tout={}", new Object[] {
+					node.getName(), this, response.getExitStatus(), response.getError(), response.getOutput()});
+		}
+		
         // attach 2nd NIC
         AbiquoContext abiquoContext = abiquoContext();
         ExternalIp externalIp = attachSecondNic(node, abiquoContext);
