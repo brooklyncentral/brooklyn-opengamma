@@ -20,8 +20,11 @@ import brooklyn.location.basic.SshMachineLocation;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.internal.ssh.SshTool;
+import brooklyn.util.net.Urls;
 import brooklyn.util.ssh.BashCommands;
+import brooklyn.util.stream.KnownSizeInputStream;
 import brooklyn.util.task.Tasks;
+import brooklyn.util.text.Strings;
 
 import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
@@ -30,14 +33,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.net.HostAndPort;
 
 public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaServerDriver {
-
-    private static final String OPENGAMMA_SUBDIR = "opengamma";
-    private static final String TEMP_SUBDIR = OPENGAMMA_SUBDIR + "/temp";
-    private static final String SCRIPT_SUBDIR = OPENGAMMA_SUBDIR + "/scripts";
-    private static final String CONFIG_SUBDIR = OPENGAMMA_SUBDIR + "/config";
-    private static final String COMMON_SUBDIR = CONFIG_SUBDIR + "/common";
-    private static final String BROOKLYN_SUBDIR = CONFIG_SUBDIR + "/brooklyn";
-    private static final String TOOLCONTEXT_SUBDIR = CONFIG_SUBDIR + "/toolcontext";
 
     // sensor put on DB entity, when running distributed, not OG server 
     public static final AttributeSensor<Boolean> DB_INITIALISED =
@@ -88,6 +83,23 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         return database.toString();
     }
 
+    public String getDownloadArchiveSubpath() {
+        return Strings.replaceAllNonRegex(getEntity().getConfig(OpenGammaServer.DOWNLOAD_ARCHIVE_SUBPATH),
+            "${version}", getVersion());
+    }
+    
+    protected String OPENGAMMA_SUBDIR() {
+        return "opengamma";
+//        return getDownloadArchiveSubpath(); 
+    }
+    protected String LIB_OVERRIDE_SUBDIR() { return OPENGAMMA_SUBDIR() + "/lib/override"; }
+    protected String TEMP_SUBDIR() { return OPENGAMMA_SUBDIR() + "/temp"; }
+    protected String SCRIPT_SUBDIR() { return OPENGAMMA_SUBDIR() + "/scripts"; }
+    protected String CONFIG_SUBDIR() { return OPENGAMMA_SUBDIR() + "/config"; }
+    protected String COMMON_SUBDIR() { return CONFIG_SUBDIR() + "/common"; }
+    protected String BROOKLYN_CONFIG_SUBDIR() { return CONFIG_SUBDIR() + "/brooklyn"; }
+//    protected String TOOLCONTEXT_SUBDIR() { return CONFIG_SUBDIR() + "/toolcontext"; }
+
     @Override
     public void install() {
         DownloadResolver resolver = Entities.newDownloader(this);
@@ -97,6 +109,7 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         List<String> commands = ImmutableList.<String>builder()
                 .addAll(BashCommands.commandsToDownloadUrlsAs(urls, saveAs))
                 .add(BashCommands.INSTALL_TAR)
+                .add(BashCommands.INSTALL_UNZIP)
                 .add("tar xvfz "+saveAs)
                 .build();
 
@@ -104,6 +117,28 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
                 .updateTaskAndFailOnNonZeroResultCode()
                 .body.append(commands).execute();
     }
+    /*
+
+in theory, from discussions with Stephen Colebourne; setting:
+
+[infrastructure].springFile = classpath:fullstack/custom-infrastructure-spring.xml
+
+in my properties that will override this from the ini:
+
+[infrastructure]
+factory = com.opengamma.component.factory.SpringInfrastructureComponentFactory
+springFile = classpath:fullstack/fullstack-examplessimulated-infrastructure-spring.xml
+
+AND
+
+[activeMQ].factory = com.opengamma.component.factory.SpringInfrastructureComponentFactory
+[activeMQ].springFile = brooklynEmptySpringFile.xml
+
+should effectively nullify the [activeMQ] section in the ini file
+
+(however for now i am copying their files and making a few clearly marked changes)
+
+     */
 
     @Override
     public void customize() {
@@ -111,40 +146,74 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         // Copy the install files to the run-dir
         newScript(CUSTOMIZING)
             .updateTaskAndFailOnNonZeroResultCode()
-            .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName("opengamma")+" "+"opengamma")
+            .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName(getDownloadArchiveSubpath())+" "+OPENGAMMA_SUBDIR())
             // create the dirs where we will put config files
-            .body.append("mkdir -p " + TEMP_SUBDIR)
-            .body.append("mkdir -p " + COMMON_SUBDIR)
-            .body.append("mkdir -p " + BROOKLYN_SUBDIR)
+            .body.append("mkdir -p " + TEMP_SUBDIR())
+            .body.append("mkdir -p " + COMMON_SUBDIR())
+            .body.append("mkdir -p " + BROOKLYN_CONFIG_SUBDIR())
+            .body.append("mkdir -p " + LIB_OVERRIDE_SUBDIR())
+            // FIXME install the postgres jar (should be done as install step ideally)
+            .body.append(BashCommands.commandToDownloadUrlAs(
+                "http://jdbc.postgresql.org/download/postgresql-9.2-1003.jdbc4.jar",
+                LIB_OVERRIDE_SUBDIR()+"/postgresql-9.2-1003.jdbc4.jar"))
             .execute();
 
-        String[] fileNames = {
-                "brooklyn-bin.properties",
+        String[] fileNamesToCopyLiterally = {
                 "brooklyn-infrastructure-spring.xml",
-                "brooklyn-viewprocessor-spring.xml",
-                "brooklyn.ini",
-                "brooklyn.properties",
+                "brooklyn.ini"
         };
-        for (String name : fileNames) {
+        String[] fileNamesToCopyTemplated = {
+                "brooklyn.properties"
+        };
+        for (String name : fileNamesToCopyLiterally) {
+            String contents = getResourceAsString("classpath:/io/cloudsoft/opengamma/config/brooklyn/" + name);
+            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), name));
+        }
+        for (String name : fileNamesToCopyTemplated) {
             String contents = processTemplate("classpath:/io/cloudsoft/opengamma/config/brooklyn/" + name);
-            // TODO use Urls.mergePath (brooklyn 0.6)
-            String destination = String.format("%s/%s/%s", getRunDir(), BROOKLYN_SUBDIR, name);
-            // TODO brooklyn 0.6 use KnownSizeInputStream.of(contents) (and also below)
-            getMachine().copyTo(new StringReader(contents), destination);
+            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), name));
         }
 
+        // needed for 2.1.0 due as workaround for https://github.com/OpenGamma/OG-Platform/pull/6
+        // (remove once that is fixed in OG)
+        copyResource("classpath:/io/cloudsoft/opengamma/config/patches/patch-postgres-rsk-v-51.jar",
+                getRunDir() + "/" + LIB_OVERRIDE_SUBDIR() + "/patch-postgres-rsk-v-51.jar");
+        // patch does not work due to local classloading -- we need to rebuild the jar
+        newScript("patching postgres rsk")
+            .updateTaskAndFailOnNonZeroResultCode()
+            .body.append("cd "+getRunDir(),
+                "cd "+LIB_OVERRIDE_SUBDIR(),
+                "mkdir tmp", 
+                "cd tmp",
+                "unzip ../../og-masterdb-2.1.0.jar",
+                "mv META-INF META-INF_masterdb",
+                "unzip -fo ../patch-postgres-rsk-v-51.jar",
+                "rm -rf META-INF",
+                "mv META-INF_masterdb META-INF",
+                "jar cvf ../og-masterdb-2.1.0.jar .",
+                "cd ..",
+                "rm -rf tmp",
+                "rm -f patch-postgres-rsk-v-51.jar",
+                "mv og-masterdb-2.1.0.jar ..")
+            .failOnNonZeroResultCode()
+            .execute();
+        
         copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml",
-                getRunDir() + "/" + COMMON_SUBDIR + "/jetty-spring.xml");
+                getRunDir() + "/" + COMMON_SUBDIR() + "/jetty-spring.xml");
         copyResource(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), 
                 "classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
-                getRunDir() + "/" + SCRIPT_SUBDIR + "/og-brooklyn.sh");
+                getRunDir() + "/" + SCRIPT_SUBDIR() + "/og-brooklyn.sh");
 
-        String toolcontextContents = processTemplate("classpath:/io/cloudsoft/opengamma/config/toolcontext/toolcontext-example.properties");
-        String toolcontextDestination = String.format("%s/%s/%s", getRunDir(), TOOLCONTEXT_SUBDIR, "toolcontext-example.properties");
+        String toolcontextContents = processTemplate("classpath:/io/cloudsoft/opengamma/config/brooklyn/toolcontext-example.properties");
+        String toolcontextDestination = Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), "toolcontext-example.properties");
         getMachine().copyTo(new StringReader(toolcontextContents), toolcontextDestination);
 
-        String scriptContents = processTemplate("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
-        String scriptDestination = String.format("%s/%s/%s", getRunDir(), SCRIPT_SUBDIR, "init-brooklyn-db.sh");
+        // FIXME no need to be a template
+        String scriptContents = 
+            //processTemplate(
+            getResourceAsString(
+            "classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
+        String scriptDestination = Urls.mergePaths(getRunDir(), SCRIPT_SUBDIR(), "init-brooklyn-db.sh");
         getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(scriptContents), scriptDestination);
 
         // wait for DB up, of course
@@ -191,7 +260,7 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
 
     @Override
     public boolean isRunning() {
-        return newScript(MutableMap.of("usePidFile", "opengamma/og-brooklyn.pid"), CHECK_RUNNING)
+        return newScript(MutableMap.of("usePidFile", "opengamma/data/og-brooklyn.pid"), CHECK_RUNNING)
                 // XXX ps --pid is not portable so can't use their scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh status").
                 .execute() == 0;

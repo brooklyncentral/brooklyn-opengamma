@@ -1,6 +1,10 @@
 #!/bin/bash
 set -x
 
+# based on examples-simulated.sh just (i think)
+# * pointing to our database init script (which is not needed here)
+# * and setting our CONFIG var (which is needed!)
+
 canonicalize() {
   local _TARGET _BASEDIR
   _TARGET="$0"
@@ -25,13 +29,16 @@ BASEDIR="$(dirname "$(dirname "$(canonicalize "$0")")")"
 SCRIPTDIR=${BASEDIR}/scripts
 cd "${BASEDIR}" || exit 1
 
+DATABASE=brooklyn
+
 # . ${SCRIPTDIR}/project-utils.sh
 # hardcode the project name for now :(
 # the installer combines multiple projects in the same dir
 # so project-utils.sh gets overwritten
-PROJECT=og-examples
-DATABASE=brooklyn
-PROJECTJAR=${PROJECT}.jar
+PROJECT=examples-simulated
+# FIXME hardcoded version
+PROJECTJAR=${PROJECT}-2.1.0.jar
+
 . ${SCRIPTDIR}/java-utils.sh
 . ${SCRIPTDIR}/componentserver-init-utils.sh
 
@@ -49,7 +56,7 @@ fi
 load_default_config
 
 # Component specific default configs
-CONFIG=classpath:brooklyn/brooklyn-bin.properties
+CONFIG=classpath:brooklyn/brooklyn.properties
 LOGBACK_CONFIG=jetty-logback.xml
 # No need to use 4g in the examples
 MEM_OPTS="-Xms512m -Xmx1024m -XX:MaxPermSize=256m"
@@ -58,10 +65,15 @@ MEM_OPTS="-Xms512m -Xmx1024m -XX:MaxPermSize=256m"
 load_component_config ${PROJECT} ${COMPONENT}
 
 CLASSPATH=$(build_classpath)
-if [ -f ${PROJECTJAR} ]; then
+if [ -f ${PROJECTJAR} ] ; then
   CLASSPATH=${PROJECTJAR}:${CLASSPATH}
-else
+elif [ -f lib/${PROJECTJAR} ] ; then
+  CLASSPATH=lib/${PROJECTJAR}:${CLASSPATH}
+elif [ -f build/${PROJECTJAR} ] ; then
   CLASSPATH=build/${PROJECTJAR}:${CLASSPATH}
+else
+  echo Could not find PROJECTJAR ${PROJECTJAR}. Exiting.
+  exit 1
 fi
 CLASSPATH=config:${CLASSPATH}
 

@@ -1,18 +1,17 @@
-[#ftl]
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
-  <!-- This config file is called from fullstack-example.ini via SpringInfrastructureComponentFactory -->
+  <!-- This config file is called from fullstack-examplessimulated.ini via SpringInfrastructureComponentFactory -->
 
   <!-- ================================================================== -->
   <bean id="standardDataSource" class="com.jolbox.bonecp.BoneCPDataSource" destroy-method="close">
-    <property name="driverClass" value="[#noparse]${db.standard.driver}[/#noparse]" />
-    <property name="jdbcUrl" value="[#noparse]${db.standard.url}[/#noparse]" />
-    <property name="username" value="[#noparse]${db.standard.username}[/#noparse]" />
-    <property name="password" value="[#noparse]${db.standard.password}[/#noparse]" />
+    <property name="driverClass" value="${db.standard.driver}" />
+    <property name="jdbcUrl" value="${db.standard.url}" />
+    <property name="username" value="${db.standard.username}" />
+    <property name="password" value="${db.standard.password}" />
     <property name="poolName" value="Standard"/>
     <property name="partitionCount" value="1" />
     <property name="acquireIncrement" value="1" />
@@ -23,7 +22,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <bean id="finDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
     <property name="name" value="Financial"/>
     <property name="dataSource" ref="standardDataSource"/>
-    <property name="dialectName" value="[#noparse]${db.standard.dialect}[/#noparse]"/>
+    <property name="dialectName" value="${db.standard.dialect}"/>
     <property name="transactionIsolationLevelName" value="ISOLATION_READ_COMMITTED" />
     <property name="transactionPropagationBehaviorName" value="PROPAGATION_REQUIRED" />
   </bean>
@@ -34,11 +33,12 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <alias name="finDbConnector" alias="posDbConnector"/>
   <alias name="finDbConnector" alias="prtDbConnector"/>
   <alias name="finDbConnector" alias="engDbConnector"/>
+  <alias name="finDbConnector" alias="orgDbConnector"/>
 
   <bean id="secDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
     <property name="name" value="Security"/>
     <property name="dataSource" ref="standardDataSource"/>
-    <property name="dialectName" value="[#noparse]${db.standard.dialect}[/#noparse]"/>
+    <property name="dialectName" value="${db.standard.dialect}"/>
     <property name="transactionIsolationLevelName" value="ISOLATION_READ_COMMITTED" />
     <property name="transactionPropagationBehaviorName" value="PROPAGATION_REQUIRED" />
     <property name="hibernateMappingFiles">
@@ -50,10 +50,10 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 
   <!-- ================================================================== -->
   <bean id="htsDataSource" class="com.jolbox.bonecp.BoneCPDataSource" destroy-method="close">
-    <property name="driverClass" value="[#noparse]${db.hts.driver}[/#noparse]" />
-    <property name="jdbcUrl" value="[#noparse]${db.hts.url}[/#noparse]" />
-    <property name="username" value="[#noparse]${db.hts.username}[/#noparse]" />
-    <property name="password" value="[#noparse]${db.hts.password}[/#noparse]" />
+    <property name="driverClass" value="${db.hts.driver}" />
+    <property name="jdbcUrl" value="${db.hts.url}" />
+    <property name="username" value="${db.hts.username}" />
+    <property name="password" value="${db.hts.password}" />
     <property name="poolName" value="TimeSeries"/>
     <property name="partitionCount" value="1" />
     <property name="acquireIncrement" value="1" />
@@ -64,17 +64,17 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <bean id="htsDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
     <property name="name" value="TimeSeries"/>
     <property name="dataSource" ref="htsDataSource"/>
-    <property name="dialectName" value="[#noparse]${db.hts.dialect}[/#noparse]"/>
+    <property name="dialectName" value="${db.hts.dialect}"/>
     <property name="transactionIsolationLevelName" value="ISOLATION_READ_COMMITTED" />
     <property name="transactionPropagationBehaviorName" value="PROPAGATION_REQUIRED" />
   </bean>
 
   <!-- ================================================================== -->
   <bean id="batDataSource" class="com.jolbox.bonecp.BoneCPDataSource" destroy-method="close">
-    <property name="driverClass" value="[#noparse]${db.batch.driver}[/#noparse]" />
-    <property name="jdbcUrl" value="[#noparse]${db.batch.url}[/#noparse]" />
-    <property name="username" value="[#noparse]${db.batch.username}[/#noparse]" />
-    <property name="password" value="[#noparse]${db.batch.password}[/#noparse]" />
+    <property name="driverClass" value="${db.batch.driver}" />
+    <property name="jdbcUrl" value="${db.batch.url}" />
+    <property name="username" value="${db.batch.username}" />
+    <property name="password" value="${db.batch.password}" />
     <property name="poolName" value="Batch" />
     <property name="partitionCount" value="1" />
     <property name="acquireIncrement" value="1" />
@@ -85,7 +85,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <bean id="batDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
     <property name="name" value="Batch"/>
     <property name="dataSource" ref="batDataSource"/>
-    <property name="dialectName" value="[#noparse]${db.batch.dialect}[/#noparse]"/>
+    <property name="dialectName" value="${db.batch.dialect}"/>
     <property name="transactionIsolationLevelName" value="ISOLATION_READ_COMMITTED" />
     <property name="transactionPropagationBehaviorName" value="PROPAGATION_REQUIRED" />
     <property name="allowHibernateThreadBoundSession" value="true"/>
@@ -98,10 +98,10 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
 
   <!-- ================================================================== -->
   <bean id="userDataSource" class="com.jolbox.bonecp.BoneCPDataSource" destroy-method="close">
-    <property name="driverClass" value="[#noparse]${db.userfinancial.driver}[/#noparse]" />
-    <property name="jdbcUrl" value="[#noparse]${db.userfinancial.url}[/#noparse]" />
-    <property name="username" value="[#noparse]${db.userfinancial.username}[/#noparse]" />
-    <property name="password" value="[#noparse]${db.userfinancial.password}[/#noparse]" />
+    <property name="driverClass" value="${db.userfinancial.driver}" />
+    <property name="jdbcUrl" value="${db.userfinancial.url}" />
+    <property name="username" value="${db.userfinancial.username}" />
+    <property name="password" value="${db.userfinancial.password}" />
     <property name="poolName" value="User"/>
     <property name="partitionCount" value="1" />
     <property name="acquireIncrement" value="1" />
@@ -112,7 +112,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <bean id="userDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
     <property name="name" value="User"/>
     <property name="dataSource" ref="userDataSource"/>
-    <property name="dialectName" value="[#noparse]${db.userfinancial.dialect}[/#noparse]"/>
+    <property name="dialectName" value="${db.userfinancial.dialect}"/>
     <property name="transactionIsolationLevelName" value="ISOLATION_READ_COMMITTED" />
     <property name="transactionPropagationBehaviorName" value="PROPAGATION_REQUIRED" />
     <property name="hibernateMappingFiles">
@@ -123,14 +123,13 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   </bean>
 
   <!-- ================================================================== -->
-
   <bean id="mainActiveMQJmsConfiguration" class="com.opengamma.transport.jms.ActiveMQJmsConfiguration">
-    <property name="brokerHost" value="${driver.brokerAddress}" />
-    <property name="brokerPort" value="${driver.brokerPort?c}" />
+    <property name="brokerHost" value="${activeMQ.brokerHost}" />
+    <property name="brokerPort" value="${activeMQ.brokerPort}" />
     <property name="timeout" value="3000" />
   </bean>
   <bean id="activeMQConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
-    <constructor-arg value="[#noparse]${activeMQ.brokerURL}[/#noparse]" />
+    <constructor-arg value="${activeMQ.brokerURL}" />
     <property name="watchTopicAdvisories" value="false" /> <!-- IGN-94 -->
   </bean>
   <bean id="jmsConnectionFactory" class="org.apache.activemq.pool.PooledConnectionFactory" destroy-method="stop"> 
@@ -139,7 +138,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <bean id="standardJmsConnector" class="com.opengamma.util.jms.JmsConnectorFactoryBean">
     <property name="name" value="StandardJms"/>
     <property name="connectionFactory" ref="jmsConnectionFactory"/>
-    <property name="clientBrokerUri" value="[#noparse]${activeMQ.brokerURL}[/#noparse]"/>
+    <property name="clientBrokerUri" value="${activeMQ.brokerURL}"/>
   </bean>
   <alias name="standardJmsConnector" alias="cfgJmsConnector"/>
   <alias name="standardJmsConnector" alias="exgJmsConnector"/>
@@ -148,11 +147,12 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   <alias name="standardJmsConnector" alias="secJmsConnector"/>
   <alias name="standardJmsConnector" alias="posJmsConnector"/>
   <alias name="standardJmsConnector" alias="prtJmsConnector"/>
+  <alias name="standardJmsConnector" alias="orgJmsConnector"/>
 
   <!-- ================================================================== -->
   <bean id="standardCacheManager" class="org.springframework.cache.ehcache.EhCacheManagerFactoryBean">
     <property name="shared" value="true"/>
-    <property name="configLocation" value="[#noparse]${ehcache.configFile}[/#noparse]" />
+    <property name="configLocation" value="${ehcache.configFile}" />
   </bean>
   <alias name="standardCacheManager" alias="cfgCacheManager"/>
   <alias name="standardCacheManager" alias="exgCacheManager"/>

@@ -80,7 +80,6 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
                         .onSuccess(HttpValueFunctions.responseCodeEquals(200))
                         .onFailureOrException(Functions.constant(false)))
                 .build();
-
     }
     
     @Override
