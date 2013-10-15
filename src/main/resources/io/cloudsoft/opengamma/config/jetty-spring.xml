@@ -2,13 +2,34 @@
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
 <beans>
 
+
+  <!-- the following 2 beans are custom for this deployment, to allow it to be monitored  -->
+  <bean id="standardMBeanServer" class="org.springframework.jmx.support.MBeanServerFactoryBean">
+    <property name="locateExistingServerIfPossible" value="true" />
+  </bean>
+
+  <bean id="jettyJMXExporter" class="org.springframework.jmx.export.MBeanExporter">
+    <property name="beans">
+      <map>
+        <entry key="com.opengamma.jetty:service=HttpConnector" value-ref="connector" />
+        <entry key="com.opengamma.jetty:service=HttpServer" value-ref="server" />
+      </map>
+    </property>
+    <property name="server" ref="standardMBeanServer" />
+  </bean>
+
+  <!-- below this is an exact copy of 2.1.0 jetty-spring.xml from og-components lib -->
+  
+  
+  <!-- Connector, NIO based -->
   <bean id="connector" class="org.eclipse.jetty.server.nio.SelectChannelConnector">
     <property name="port" value="${jetty.port}" />
     <property name="requestHeaderSize" value="16384" /><!-- Handle larger URIs -->
     <property name="confidentialPort" value="${jetty.securePort}" />
   </bean>
 
-  <bean id="webAppContext" class="org.eclipse.jetty.webapp.WebAppContext">
+  <!-- Handler for web-apps -->
+  <bean id="webAppContextHandler" class="org.eclipse.jetty.webapp.WebAppContext">
     <property name="contextPath" value="/" />
     <property name="resourceBase">
       <bean class="com.opengamma.util.spring.ResourcePathFactoryBean">
@@ -25,11 +46,6 @@
     why we have this defaults file I'm commenting it out for now.
     <property name="defaultsDescriptor" value="webdefaults.xml" />
     -->
-    <property name="initParams">
-      <map>
-        <entry key="contextConfigLocation" value="${server.spring}" />
-      </map>
-    </property>
     <property name="eventListeners">
       <list>
         <bean class="org.springframework.web.context.ContextLoaderListener" />
@@ -42,57 +58,35 @@
       <bean class="com.opengamma.component.rest.PlainTextErrorHandler" />
     </property>
   </bean>
-  
+
+  <!-- Jetty now uses a two-arg method annoyingly -->
+  <bean class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+    <property name="targetObject">
+      <ref local="webAppContextHandler"/>
+    </property>
+    <property name="targetMethod">
+      <value>setInitParameter</value>
+    </property>
+    <property name="arguments">
+      <list>
+        <value>contextConfigLocation</value>
+        <value>${server.spring}</value>
+      </list>
+    </property>
+  </bean>
+
+  <!-- Main Jetty server -->
   <bean id="server" class="org.eclipse.jetty.server.Server">
     <property name="connectors">
       <list>
         <ref bean="connector" />
       </list>
     </property>
-
-    <property name="handler">
-      <bean id="handlerList" class="org.eclipse.jetty.server.handler.HandlerCollection">
-        <property name="handlers">
-          <list>
-            <ref bean="webAppContext" />
-            <bean class="org.eclipse.jetty.server.handler.RequestLogHandler">
-              <property name="requestLog">
-                <bean class="org.eclipse.jetty.server.NCSARequestLog">
-                  <constructor-arg value="${jetty.log.dir}/${og.server.name}-requests-yyyy_mm_dd.log"/>
-                  <property name="extended" value="true"/>
-                  <property name="append" value="true"/>
-                  <property name="logLatency" value="true"/>
-                  <property name="ignorePaths">
-                    <list><value>/cometd/*</value></list>
-                  </property>
-                  <property name="logTimeZone" value="UTC"/>
-                  <property name="retainDays" value="7"/>
-                </bean>
-              </property>
-            </bean>
-          </list>
-        </property>
-      </bean>
-    </property>
-
+    <property name="handler" ref="webAppContextHandler" />
     <property name="stopAtShutdown" value="true" />
-    <property name="gracefulShutdown" value="1000" />
+    <property name="gracefulShutdown" value="2000" />
     <property name="sendDateHeader" value="true" />
     <property name="sendServerVersion" value="true" />
-  </bean>
-
-  <bean id="standardMBeanServer" class="org.springframework.jmx.support.MBeanServerFactoryBean">
-    <property name="locateExistingServerIfPossible" value="true" />
-  </bean>
-
-  <bean id="jettyJMXExporter" class="org.springframework.jmx.export.MBeanExporter">
-    <property name="beans">
-      <map>
-        <entry key="com.opengamma.jetty:service=HttpConnector" value-ref="connector" />
-        <entry key="com.opengamma.jetty:service=HttpServer" value-ref="server" />
-      </map>
-    </property>
-    <property name="server" ref="standardMBeanServer" />
   </bean>
 
 </beans>
