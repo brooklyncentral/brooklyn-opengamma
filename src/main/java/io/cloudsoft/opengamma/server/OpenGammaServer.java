@@ -1,6 +1,7 @@
 package io.cloudsoft.opengamma.server;
 
 import brooklyn.config.ConfigKey;
+import brooklyn.entity.Entity;
 import brooklyn.entity.basic.BrooklynConfigKeys;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.SoftwareProcess;
@@ -46,6 +47,9 @@ public interface OpenGammaServer extends SoftwareProcess, WebAppService {
     ConfigKey<PostgreSqlNode> DATABASE = new BasicConfigKey<PostgreSqlNode>(PostgreSqlNode.class,
             "opengamma.services.database.entity", "The entity representing the OpenGamma database server");
 
+    AttributeSensor<Boolean> DATABASE_INITIALIZED =
+        new BasicAttributeSensor<Boolean>(Boolean.class, "opengamma.db.completed", "OG database completely initialised");
+    
     AttributeSensor<Integer> VIEW_PROCESSES_COUNT =
             new BasicAttributeSensor<Integer>(Integer.class, "opengamma.views.processes.active.count", "Number of active view processes");
 
