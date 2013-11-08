@@ -65,7 +65,7 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
         String location = CommandLineUtil.getCommandLineOption(args, "--location", DEFAULT_LOCATION);
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
-                 .application(EntitySpec.create(OpenGammaSingleServer.class)
+                 .application(EntitySpec.create(StartableApplication.class, OpenGammaSingleServer.class)
                          .displayName("OpenGamma Server Example"))
                  .webconsolePort(port)
                  .location(location)
