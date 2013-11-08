@@ -50,6 +50,15 @@
                 <include>*.jar</include>
             </includes>
         </fileSet>
+        <!-- adds logback-custom.xml to the conf directory of zip package -->
+        <fileSet>
+            <directory>src/main/assembly/conf</directory>
+            <outputDirectory>conf/</outputDirectory>
+            <includes>
+                <include>*</include>
+            </includes>
+        </fileSet>        
     </fileSets>
+
 </assembly>
 

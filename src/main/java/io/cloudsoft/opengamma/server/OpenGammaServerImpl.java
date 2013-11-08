@@ -68,6 +68,7 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
         super.connectSensors();
 
         HostAndPort hp = BrooklynAccessUtils.getBrooklynAccessibleAddress(this, getAttribute(HTTP_PORT));
+        log.debug("HostAndPort seen during connectSensors " + hp);
         String rootUrl = "http://"+hp.getHostText()+":"+hp.getPort()+"/";
         setAttribute(ROOT_URL, rootUrl);
         

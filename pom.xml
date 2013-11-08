@@ -14,7 +14,7 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.6.0-M2</brooklyn.version>
+        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
     </properties>
 
     <dependencies>
@@ -23,6 +23,18 @@
             <artifactId>brooklyn-all</artifactId>
             <version>${brooklyn.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.jclouds.labs</groupId>
+            <artifactId>abiquo</artifactId>
+            <version>1.6.1-incubating</version>
+        </dependency> 
+        <dependency>
+            <groupId>io.brooklyn</groupId>
+            <artifactId>brooklyn-logback-xml</artifactId>
+            <version>${brooklyn.version}</version> 
+            <scope>provided</scope>  
+            <optional>true</optional>
+        </dependency>           
         <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-test-support</artifactId>

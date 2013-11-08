@@ -8,6 +8,7 @@
 atlassian-ide-plugin.xml
 *.class
 
+bin/
 target/
 test-output/
 
