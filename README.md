@@ -135,8 +135,3 @@ For more information on the open-source Brooklyn project visit <http://brooklyn.
 For commercial enquiries including bespoke development and paid support
 contact [Cloudsoft Corp.](http://www.cloudsoftcorp.com/), the supporters of
 Brooklyn, at **[info@cloudsoftcorp.com](mailto:info@cloudsoftcorp.com)**.
-
-***
-
-This software is Copyright 2013 by Cloudsoft Corp.; Released as open source
-under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0).
