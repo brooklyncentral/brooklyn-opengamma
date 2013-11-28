@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+
 SCRIPTDIR="$(dirname "$0")"
 
 # based on init-examples-simulated-db.sh with one change, to append the properties file as the first arg

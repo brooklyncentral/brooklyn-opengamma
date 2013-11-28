@@ -109,7 +109,8 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
                 .configure(BasicStartable.LOCATIONS_FILTER, LocationsFilter.USE_FIRST_LOCATION));
         final ActiveMQBroker broker = backend.addChild(EntitySpec.create(ActiveMQBroker.class));
         final PostgreSqlNode database = backend.addChild(postgresSpec()
-                .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
+                .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql")
+                .configure(PostgreSqlNode.DISCONNECT_ON_STOP, true));
 
         // Now add the server tier, either multi-region (fabric) or fixed single-region (cluster)
 
@@ -154,7 +155,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             // tell GeoDNS what to monitor
             geoDns.setTargetEntityProvider(webFabric);
 
-            // bubble up sensors (kpi's and access info), from WebFabric and GeoDNS
+            // bubble up sensors (KPIs and access info), from WebFabric and GeoDNS
             OpenGammaMonitoringAggregation.aggregateOpenGammaClusterSensors(webFabric);
             OpenGammaMonitoringAggregation.promoteKpis(this, webFabric);
             addEnricher(new SensorTransformingEnricher<Integer,Integer>(webFabric, Changeable.GROUP_SIZE, 
@@ -168,7 +169,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
             
             Entity ogWebCluster = ogWebClusterFactory.newEntity(MutableMap.of(), this);
             
-            // bubble up sensors (kpi's and access info) - in single-cluster mode it all comes from cluster (or is hard-coded)
+            // bubble up sensors (KPIs and access info) - in single-cluster mode it all comes from cluster (or is hard-coded)
             OpenGammaMonitoringAggregation.promoteKpis(this, ogWebCluster);
             setAttribute(OpenGammaMonitoringAggregation.REGIONS_COUNT, 1);
             addEnricher(SensorPropagatingEnricher.newInstanceListeningTo(ogWebCluster,  

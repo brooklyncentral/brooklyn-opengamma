@@ -70,7 +70,7 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         return attributeWhenReady(OpenGammaServer.BROKER, ActiveMQBroker.ADDRESS);
     }
 
-    /** Return the {@link ActiveMqBroker#OPEN_WIRE_PORT port} for the {@link OpenGammaServer#BROKER broker}. */
+    /** Return the {@link ActiveMQBroker#OPEN_WIRE_PORT port} for the {@link OpenGammaServer#BROKER broker}. */
     public Integer getBrokerPort() {
         return attributeWhenReady(OpenGammaServer.BROKER, ActiveMQBroker.OPEN_WIRE_PORT);
     }
@@ -244,7 +244,7 @@ should effectively nullify the [activeMQ] section in the ini file
                     log.info("{}: Initialising database on {}", entity, database);
                     newScript(CUSTOMIZING)
                             .updateTaskAndFailOnNonZeroResultCode()
-                            .body.append("cd opengamma", "scripts/init-brooklyn-db.sh")
+                            .body.append("cd opengamma", "unset JAVA_HOME", "scripts/init-brooklyn-db.sh")
                             .execute();
                     ((EntityLocal)database).setAttribute(DB_INITIALISED, true);
                 } else {
@@ -280,7 +280,10 @@ should effectively nullify the [activeMQ] section in the ini file
         
         newScript(LAUNCHING)
                 .updateTaskAndFailOnNonZeroResultCode()
-                .body.append("cd opengamma", "nohup scripts/og-brooklyn.sh start",
+                .body.append(
+                        "cd opengamma",
+                        "unset JAVA_HOME",
+                        "nohup scripts/og-brooklyn.sh start",
                         /* sleep needed sometimes else the java process - the last thing done by the script -
                          * does not seem to start; it is being invoked as `exec (setsid) java ... < /dev/null &` */
                         "sleep 3")
@@ -296,7 +299,7 @@ should effectively nullify the [activeMQ] section in the ini file
 
     @Override
     public boolean isRunning() {
-        return newScript(MutableMap.of("usePidFile", "opengamma/data/og-brooklyn.pid"), CHECK_RUNNING)
+        return newScript(MutableMap.of("usePidFile", getPidFile()), CHECK_RUNNING)
                 // XXX ps --pid is not portable so can't use their scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh status").
                 .execute() == 0;
@@ -304,7 +307,7 @@ should effectively nullify the [activeMQ] section in the ini file
 
     @Override
     public void stop() {
-        newScript(MutableMap.of("usePidFile", "opengamma/og-brooklyn.pid"), STOPPING)
+        newScript(MutableMap.of("usePidFile", getPidFile()), STOPPING)
                 // XXX ps --pid is not portable so we can't rely on the OG default scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh stop").
                 .execute();
@@ -313,6 +316,10 @@ should effectively nullify the [activeMQ] section in the ini file
     @Override
     protected String getLogFileLocation() {
         return null;
+    }
+
+    protected String getPidFile() {
+        return "opengamma/data/og-brooklyn.pid";
     }
 
     @Override
@@ -330,10 +337,11 @@ should effectively nullify the [activeMQ] section in the ini file
     // TODO items below should be lifted to core brooklyn -- requirement on java _7_
     
     public static String installJava7OrFail() {
-        return BashCommands.installPackageOrFail(MutableMap.of("apt", "openjdk-7-jdk","yum", "java-1.7.0-openjdk-devel"), null);
+        return BashCommands.installPackageOrFail(MutableMap.of("apt", "openjdk-7-jdk", "yum", "java-1.7.0-openjdk-devel"), null);
     }
 
     // overrridden to install java 7
+    @Override
     public boolean installJava() {
         try {
             getLocation().acquireMutex("install:" + getLocation().getDisplayName(), "installing Java at " + getLocation());
@@ -341,10 +349,10 @@ should effectively nullify the [activeMQ] section in the ini file
             int result = getLocation().execCommands("check java", Arrays.asList("which java"));
             if (result == 0) {
                 log.debug("java detected at " + entity + " @ " + getLocation()+"; checking version");
-                ProcessTaskWrapper<Integer> versionTask = Entities.submit(getEntity(), SshTasks.newSshExecTaskFactory(getLocation(), "java -version").
-                    requiringExitCodeZero());
+                ProcessTaskWrapper<Integer> versionTask = Entities.submit(getEntity(),
+                        SshTasks.newSshExecTaskFactory(getLocation(), "java -version").requiringExitCodeZero());
                 versionTask.get();
-                String jversion =versionTask.getStderr()+"\n"+versionTask.getStdout();
+                String jversion = versionTask.getStderr()+"\n"+versionTask.getStdout();
                 
                 int start=0;
                 while (start<jversion.length() && !Character.isDigit(jversion.charAt(start)))
