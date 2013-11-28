@@ -1,5 +1,6 @@
-package io.cloudsoft.opengamma;
+package io.cloudsoft.opengamma.app;
 
+import io.cloudsoft.opengamma.CustomNginxControllerImpl;
 import io.cloudsoft.opengamma.server.OpenGammaServer;
 
 import java.util.List;

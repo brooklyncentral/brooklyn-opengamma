@@ -18,4 +18,4 @@ if [ ! `ls brooklyn-opengamma-*.jar 2> /dev/null` ] ; then
   exit 1
 fi
 
-$JAVA -Xms256m -Xmx1024m -XX:MaxPermSize=1024m -classpath "conf/:patch/*:*:lib/*" io.cloudsoft.opengamma.OpenGammaCluster "$@"
+$JAVA -Xms256m -Xmx1024m -XX:MaxPermSize=1024m -classpath "conf/:patch/*:*:lib/*" io.cloudsoft.opengamma.app.ElasticOpenGammaApplication "$@"
