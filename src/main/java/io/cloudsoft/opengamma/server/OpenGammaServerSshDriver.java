@@ -7,7 +7,6 @@ import java.util.Map;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
-import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
@@ -65,7 +64,7 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         }
     }
 
-    /** Blocking call to return the {@link ActiveMqBroker#ADDRESS host} for the {@link OpenGammaServer#BROKER broker}. */
+    /** Blocking call to return the {@link ActiveMQBroker#ADDRESS host} for the {@link OpenGammaServer#BROKER broker}. */
     public String getBrokerAddress() {
         return attributeWhenReady(OpenGammaServer.BROKER, ActiveMQBroker.ADDRESS);
     }
@@ -173,19 +172,21 @@ should effectively nullify the [activeMQ] section in the ini file
             .execute();
 
         String[] fileNamesToCopyLiterally = {
-                "brooklyn-infrastructure-spring.xml",
-                "brooklyn.ini"
+                "classpath:/io/cloudsoft/opengamma/config/brooklyn/brooklyn-infrastructure-spring.xml",
+                "classpath:/io/cloudsoft/opengamma/config/brooklyn/brooklyn.ini"
         };
-        String[] fileNamesToCopyTemplated = {
-                "brooklyn.properties"
+        String[] filesToCopyTemplated = {
+                getPropertiesTemplateUrl()
         };
         for (String name : fileNamesToCopyLiterally) {
-            String contents = getResourceAsString("classpath:/io/cloudsoft/opengamma/config/brooklyn/" + name);
-            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), name));
+            String contents = getResourceAsString(name);
+            String filename = name.substring(name.lastIndexOf('/') + 1);
+            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), filename));
         }
-        for (String name : fileNamesToCopyTemplated) {
-            String contents = processTemplate("classpath:/io/cloudsoft/opengamma/config/brooklyn/" + name);
-            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), name));
+        for (String name : filesToCopyTemplated) {
+            String contents = processTemplate(name);
+            String filename = name.substring(name.lastIndexOf('/') + 1);
+            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), filename));
         }
 
         // needed for 2.1.0 due as workaround for https://github.com/OpenGamma/OG-Platform/pull/6
@@ -222,11 +223,7 @@ should effectively nullify the [activeMQ] section in the ini file
         String toolcontextDestination = Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), "toolcontext-example.properties");
         getMachine().copyTo(new StringReader(toolcontextContents), toolcontextDestination);
 
-        // FIXME no need to be a template
-        String scriptContents = 
-            //processTemplate(
-            getResourceAsString(
-            "classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
+        String scriptContents = getResourceAsString("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
         String scriptDestination = Urls.mergePaths(getRunDir(), SCRIPT_SUBDIR(), "init-brooklyn-db.sh");
         getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(scriptContents), scriptDestination);
 
@@ -299,7 +296,7 @@ should effectively nullify the [activeMQ] section in the ini file
 
     @Override
     public boolean isRunning() {
-        return newScript(MutableMap.of("usePidFile", getPidFile()), CHECK_RUNNING)
+        return newScript(MutableMap.of("usePidFile", getPidFileRelativeToRunDir()), CHECK_RUNNING)
                 // XXX ps --pid is not portable so can't use their scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh status").
                 .execute() == 0;
@@ -307,7 +304,7 @@ should effectively nullify the [activeMQ] section in the ini file
 
     @Override
     public void stop() {
-        newScript(MutableMap.of("usePidFile", getPidFile()), STOPPING)
+        newScript(MutableMap.of("usePidFile", getPidFileRelativeToRunDir()), STOPPING)
                 // XXX ps --pid is not portable so we can't rely on the OG default scripts
                 // .body.append("cd opengamma", "scripts/og-examples.sh stop").
                 .execute();
@@ -315,11 +312,15 @@ should effectively nullify the [activeMQ] section in the ini file
 
     @Override
     protected String getLogFileLocation() {
-        return null;
+        return getRunDir() + "/opengamma/logs/jetty.log";
     }
 
-    protected String getPidFile() {
+    protected String getPidFileRelativeToRunDir() {
         return "opengamma/data/og-brooklyn.pid";
+    }
+
+    protected String getPropertiesTemplateUrl() {
+        return entity.getConfig(OpenGammaServer.PROPERTIES_TEMPLATE_URL);
     }
 
     @Override

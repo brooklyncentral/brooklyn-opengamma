@@ -1,7 +1,6 @@
 package io.cloudsoft.opengamma.server;
 
 import brooklyn.config.ConfigKey;
-import brooklyn.entity.Entity;
 import brooklyn.entity.basic.BrooklynConfigKeys;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.SoftwareProcess;
@@ -46,6 +45,12 @@ public interface OpenGammaServer extends SoftwareProcess, WebAppService {
     @SetFromFlag("database")
     ConfigKey<PostgreSqlNode> DATABASE = new BasicConfigKey<PostgreSqlNode>(PostgreSqlNode.class,
             "opengamma.services.database.entity", "The entity representing the OpenGamma database server");
+
+    @SetFromFlag("serverProperties")
+    ConfigKey<String> PROPERTIES_TEMPLATE_URL = ConfigKeys.newConfigKey(
+            "opengamma.server.config", "Properties file in freemarker format for configuration of OpenGamma servers. " +
+            "The given file will be the first entry in the OpenGamma configuration chain.",
+            "classpath:/io/cloudsoft/opengamma/config/brooklyn/brooklyn.properties");
 
     AttributeSensor<Boolean> DATABASE_INITIALIZED =
         new BasicAttributeSensor<Boolean>(Boolean.class, "opengamma.db.completed", "OG database completely initialised");
