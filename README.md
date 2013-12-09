@@ -133,5 +133,15 @@ For more information on the open-source Brooklyn project visit <http://brooklyn.
 - [Join the brooklyn-users discussion group](https://groups.google.com/forum/#!forum/brooklyn-users) 
 
 For commercial enquiries including bespoke development and paid support
-contact [Cloudsoft Corp.](http://www.cloudsoftcorp.com/), the supporters of
-Brooklyn, at **[info@cloudsoftcorp.com](mailto:info@cloudsoftcorp.com)**.
+contact [Cloudsoft](http://www.cloudsoftcorp.com/), the supporters of
+Brooklyn, at [info@cloudsoftcorp.com](mailto:info@cloudsoftcorp.com).
+
+================
+
+© 2013 Cloudsoft Corporation Limited. All rights reserved.
+
+Use of this software is subject to the Cloudsoft EULA, provided in LICENSE.md and at 
+
+http://www.cloudsoftcorp.com/cloudsoft-developer-license
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
