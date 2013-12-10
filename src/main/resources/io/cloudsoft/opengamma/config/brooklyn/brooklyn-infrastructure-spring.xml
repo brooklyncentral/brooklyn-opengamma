@@ -123,6 +123,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
   </bean>
 
   <!-- ================================================================== -->
+  <!-- Brooklyn alteration configures ActiveMQ here rather than in brooklyn.ini -->
   <bean id="mainActiveMQJmsConfiguration" class="com.opengamma.transport.jms.ActiveMQJmsConfiguration">
     <property name="brokerHost" value="${activeMQ.brokerHost}" />
     <property name="brokerPort" value="${activeMQ.brokerPort}" />

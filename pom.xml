@@ -13,8 +13,10 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <groovy.version>1.8.6</groovy.version>
-        <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
+        <testng.version>6.8</testng.version>
+        <brooklyn.version>0.7.0-SNAPSHOT</brooklyn.version>
+        <jclouds.version>1.6.3-SNAPSHOT</jclouds.version>
+        <networking.version>0.1.0-SNAPSHOT</networking.version>
     </properties>
 
     <dependencies>
@@ -32,18 +34,18 @@
         <dependency>
             <groupId>org.apache.jclouds.provider</groupId>
             <artifactId>softlayer</artifactId>
-            <version>1.6.3-SNAPSHOT</version>
+            <version>${jclouds.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.jclouds.labs</groupId>
             <artifactId>google-compute-engine</artifactId>
-            <version>1.6.3-SNAPSHOT</version>
+            <version>${jclouds.version}</version>
         </dependency>         
         <dependency>
             <groupId>org.apache.jclouds.labs</groupId>
             <artifactId>abiquo</artifactId>
-            <version>1.6.3-SNAPSHOT</version>
-        </dependency> 
+            <version>${jclouds.version}</version>
+        </dependency>
         <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-logback-xml</artifactId>
@@ -51,6 +53,12 @@
             <scope>provided</scope>  
             <optional>true</optional>
         </dependency>           
+        <dependency>
+            <groupId>io.cloudsoft.networking</groupId>
+            <artifactId>brooklyn-networking-cloudstack</artifactId>
+            <version>${networking.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-test-support</artifactId>
