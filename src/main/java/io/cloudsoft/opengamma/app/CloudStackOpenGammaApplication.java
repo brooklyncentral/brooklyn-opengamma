@@ -46,6 +46,12 @@ import io.cloudsoft.networking.subnet.SubnetTier;
 import io.cloudsoft.opengamma.cluster.OpenGammaClusterFactory;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 
+/**
+ * Differences from {@link ElasticOpenGammaApplication}: creates an OpenGamma cluster with
+ * broker and database in a single region. The cluster is created behind a subnet, and
+ * necessary ports are forwarded (e.g. ActiveMQ broker's JMX port for Brooklyn). The default
+ * Nginx load balancer is replaced with a CloudStack loadbalancer running in "SOURCE" mode.
+ */
 public class CloudStackOpenGammaApplication extends LegacyAbstractSubnetApp implements ClusteredOpenGammaApplication {
 
     private static final Logger LOG = LoggerFactory.getLogger(CloudStackOpenGammaApplication.class);
@@ -160,9 +166,9 @@ public class CloudStackOpenGammaApplication extends LegacyAbstractSubnetApp impl
             if (l!=null) locations.add(l);
             else break;
         }
-        if (locations.isEmpty()) locations.add("Germany");
-        if (locations.contains("localhost"))
-            throw new IllegalStateException("Refusing to run "+CloudStackOpenGammaApplication.class+" on localhost!");
+        if (locations.isEmpty())
+            throw new IllegalStateException("No locations selected for deployment of " +
+                    CloudStackOpenGammaApplication.class.getName());
 
         BrooklynLauncher launcher = BrooklynLauncher.newInstance()
                  .application(EntitySpec.create(StartableApplication.class, CloudStackOpenGammaApplication.class)

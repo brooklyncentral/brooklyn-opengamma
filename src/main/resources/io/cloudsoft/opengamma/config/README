@@ -19,17 +19,33 @@ Brooklyn uses five config files:
 ./brooklyn/toolcontext-example.properties
 ./jetty-spring.xml
 
-Of these, toolcontext-example.properties and brooklyn.properties are treated as Freemarker templates and the rest are copied to servers verbatim.
+Of these, toolcontext-example.properties and brooklyn.properties are treated as
+Freemarker templates and the rest are copied to servers verbatim.
 
 Differences to default OpenGamma config files:
 
-brooklyn-infrastructure-spring.xml: Origin is OpenGamma 2.1.0 examples config/fullstack/fullstack-examplessimulated-infrastructure-spring.xml. It is altered to create the ActiveMQ broker (rather than the responsibility belonging to brooklyn.ini).
+brooklyn-infrastructure-spring.xml: Origin is OpenGamma 2.1.0 examples
+config/fullstack/fullstack-examplessimulated-infrastructure-spring.xml. It is
+altered to create the ActiveMQ broker (rather than the responsibility belonging
+to brooklyn.ini).
 
-jetty-spring.xml: Replaces OpenGamma 2.1.0 og-components.jar:/common/jetty-spring.xml to enable JMX monitoring. Note that it is placed in the right directory for the classpath (common/) by OpenGammaServerSshDriver.
+jetty-spring.xml: Replaces OpenGamma 2.1.0
+og-components.jar:/common/jetty-spring.xml to enable JMX monitoring. Note that
+it is placed in the right directory for the classpath (common/) by
+OpenGammaServerSshDriver.
 
-toolcontext-example.properties: Origin is OpenGamma 2.1.0 example config/toolcontext/toolcontext-examplessimulated.properties. It switches the database dialect from HSQLDbDialect to PostgresDbDialect and injects the database and broker locations from the Brooklyn driver.
+toolcontext-example.properties: Origin is OpenGamma 2.1.0 example
+config/toolcontext/toolcontext-examplessimulated.properties. It switches the
+database dialect from HSQLDbDialect to PostgresDbDialect and injects the
+database and broker locations from the Brooklyn driver.
 
-brooklyn.ini: Replaces OpenGamma 2.1.0 examples config/fullstack/fullstack-examplessimulated.ini to not to set up ActiveMQ, (commenting out the [activeMQ] block), to point to brooklyn-infrastructure-spring.xml (to set up remove ActiveMQ instead) and to comment out activeMQ = ActiveMQJmsConfiguration::main.
+brooklyn.ini: Replaces OpenGamma 2.1.0 examples
+config/fullstack/fullstack-examplessimulated.ini to not to set up ActiveMQ,
+(commenting out the [activeMQ] block), to point to
+brooklyn-infrastructure-spring.xml (to set up remove ActiveMQ instead) and to
+comment out activeMQ = ActiveMQJmsConfiguration::main.
 
-brooklyn.properties: Origin is OpenGamma 2.1.0 examples config/fullstack/fullstack-examplessimulated.properties. It replaces mentions of HSQL with Postgres and injects database and broker locations from the driver.
-
+brooklyn.properties: Origin is OpenGamma 2.1.0 examples
+config/fullstack/fullstack-examplessimulated.properties. It replaces mentions
+of HSQL with Postgres and injects database and broker locations from the
+driver.
