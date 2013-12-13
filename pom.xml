@@ -12,7 +12,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <groovy.version>1.8.6</groovy.version>
+        <includedTestGroups/>
+        <excludedTestGroups>Integration,Live,WIP</excludedTestGroups>
+
         <testng.version>6.8</testng.version>
         <brooklyn.version>0.7.0-SNAPSHOT</brooklyn.version>
         <networking.version>0.2.0-SNAPSHOT</networking.version>
@@ -145,18 +147,39 @@
                 </configuration>
             </plugin>
             <plugin>
-                    <!-- 'release' is not used; easier just to checkout, tag, `mvn deploy` manually
-                         with -Dbrooklyn.deployTo=TARGET ... and note we need to update docs and examples, 
-                         which is a non-maven task!) -->
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-release-plugin</artifactId>
-                    <version>2.1</version>
-                    <configuration>
-                        <mavenExecutorId>forked-path</mavenExecutorId>
-                        <useReleaseProfile>false</useReleaseProfile>
-                        <arguments>-Dbrooklyn.deployTo=sonatype</arguments>
-                    </configuration>
-                </plugin>
+                <!-- 'release' is not used; easier just to checkout, tag, `mvn deploy` manually
+                     with -Dbrooklyn.deployTo=TARGET ... and note we need to update docs and examples,
+                     which is a non-maven task!) -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>2.1</version>
+                <configuration>
+                    <mavenExecutorId>forked-path</mavenExecutorId>
+                    <useReleaseProfile>false</useReleaseProfile>
+                    <arguments>-Dbrooklyn.deployTo=sonatype</arguments>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.16</version>
+                <configuration>
+                    <properties>
+                        <property>
+                            <name>listener</name>
+                            <value>brooklyn.test.LoggingVerboseReporter</value>
+                        </property>
+                    </properties>
+                    <enableAssertions>true</enableAssertions>
+                    <groups>${includedTestGroups}</groups>
+                    <excludedGroups>${excludedTestGroups}</excludedGroups>
+                    <testFailureIgnore>false</testFailureIgnore>
+                    <systemPropertyVariables>
+                        <verbose>-1</verbose>
+                    </systemPropertyVariables>
+                    <printSummary>true</printSummary>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -226,6 +249,45 @@
                 </snapshotRepository>
             </distributionManagement>
         </profile>
+
+        <profile>
+            <id>Integration</id>
+            <properties>
+                <includedTestGroups>Integration</includedTestGroups>
+                <excludedTestGroups>Live,WIP</excludedTestGroups>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-antrun-plugin</artifactId>
+                        <inherited>true</inherited>
+                        <executions>
+                            <execution>
+                                <id>run-tests</id>
+                                <goals>
+                                    <goal>run</goal>
+                                </goals>
+                                <phase>integration-test</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+                <id>Live</id>
+                <properties>
+                    <includedTestGroups>Live</includedTestGroups>
+                    <excludedTestGroups>Integration,WIP</excludedTestGroups>
+                </properties>
+            </profile>
+            <profile>
+                <id>WIP</id>
+                <properties>
+                    <includedTestGroups>WIP</includedTestGroups>
+                    <excludedTestGroups>Integration,Live</excludedTestGroups>
+                </properties>
+            </profile>
     </profiles>
 
 </project>
