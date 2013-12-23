@@ -1,0 +1,4 @@
+
+0.1.0 --> old version of OpenGamma (1.2) and brooklyn 060-snapshot
+0.2.0 --> update verison of OpenGamma (2.1) and brooklyn 060 (ga)
+0.3.0 --> brooklyn 070-snapshot, flexible configuration
