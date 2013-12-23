@@ -7,7 +7,6 @@ import java.util.Map;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
-import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.basic.EntityLocal;
@@ -327,12 +326,6 @@ should effectively nullify the [activeMQ] section in the ini file
     }
     
     
-    // TODO items below should be lifted to core brooklyn -- requirement on java _7_
-    
-    public static String installJava7OrFail() {
-        return BashCommands.installPackageOrFail(MutableMap.of("apt", "openjdk-7-jdk","yum", "java-1.7.0-openjdk-devel"), null);
-    }
-
     // overrridden to install java 7
     public boolean installJava() {
         try {
@@ -376,7 +369,7 @@ should effectively nullify the [activeMQ] section in the ini file
             }
 
             result = newScript("INSTALL_OPENJDK").body.append(
-                installJava7OrFail()
+                BashCommands.installJava7OrFail()
                 // could use Jclouds routines -- but the following complains about yum-install not defined
                 // even though it is set as an alias (at the start of the first file)
                 //   new ResourceUtils(this).getResourceAsString("classpath:///functions/setupPublicCurl.sh"),
@@ -396,7 +389,7 @@ should effectively nullify the [activeMQ] section in the ini file
             Time.sleep(Duration.TEN_SECONDS);
 
             result = newScript("INSTALL_OPENJDK").body.append(
-                installJava7OrFail()
+                BashCommands.installJava7OrFail()
                 ).execute();
             if (result==0) {
                 log.info("Succeeded installing Java at " + getLocation() + " for " + entity + " after retry.");
