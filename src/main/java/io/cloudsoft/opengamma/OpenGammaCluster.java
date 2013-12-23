@@ -22,7 +22,6 @@ import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.BasicStartable;
-import brooklyn.entity.basic.BasicStartable.LocationsFilter;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityFactory;
@@ -49,6 +48,7 @@ import brooklyn.event.SensorEventListener;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
+import brooklyn.location.basic.Locations;
 import brooklyn.location.basic.PortRanges;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.policy.Policy;
@@ -106,7 +106,7 @@ public class OpenGammaCluster extends AbstractApplication implements StartableAp
         
         BasicStartable backend = addChild(EntitySpec.create(BasicStartable.class)
                 .displayName("OpenGamma Back-End")
-                .configure(BasicStartable.LOCATIONS_FILTER, LocationsFilter.USE_FIRST_LOCATION));
+                .configure(BasicStartable.LOCATIONS_FILTER, Locations.USE_FIRST_LOCATION));
         final ActiveMQBroker broker = backend.addChild(EntitySpec.create(ActiveMQBroker.class));
         final PostgreSqlNode database = backend.addChild(postgresSpec()
                 .configure(PostgreSqlNode.CREATION_SCRIPT_URL, "classpath:/io/cloudsoft/opengamma/config/create-brooklyn-db.sql"));
