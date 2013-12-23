@@ -6,6 +6,7 @@ import io.cloudsoft.opengamma.cluster.OpenGammaClusterFactory;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import brooklyn.entity.trait.Changeable;
 import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.Location;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
 import brooklyn.location.basic.Locations;
 import brooklyn.location.basic.PortRanges;
@@ -60,10 +62,18 @@ public class ElasticOpenGammaApplication extends AbstractApplication implements 
     /** build the application */
     @Override
     public void init() {
-        if(Iterables.get(getManagementContext().getLocationManager().getLocations(), 0).getDisplayName().startsWith("interoute-")) {
+        // FIXME this is a messy way to autodetect and apply interoute-specific behaviour
+        // i (alex) think the intention is that if interoute is the first registered location,
+        // assume we are running in interoute and use the custom nginx driver which it needs.
+        // better i think will be for this to be a property on the stock nginx driver,
+        // and have a location-specific property (set true by default if possible in interoute)
+        // that turns on the behaviour.
+        Collection<Location> allLocations = getManagementContext().getLocationManager().getLocations();
+        if (!allLocations.isEmpty() && Iterables.get(allLocations, 0).getDisplayName().startsWith("interoute-")) {
             EntityTypeRegistry typeRegistry = getManagementContext().getEntityManager().getEntityTypeRegistry();
             typeRegistry.registerImplementation(NginxController.class, CustomNginxControllerImpl.class);
         }
+        
         StringConfigMap config = getManagementContext().getConfig();
         
         // First define the stock service entities (message bus broker and database server) for OG
