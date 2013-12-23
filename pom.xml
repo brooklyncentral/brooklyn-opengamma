@@ -3,7 +3,7 @@
     
     <groupId>io.cloudsoft.opengamma</groupId>
     <artifactId>brooklyn-opengamma</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.0</version>
     <packaging>jar</packaging>
     
     <name>Brooklyn OpenGamma Deployent and Management</name>
