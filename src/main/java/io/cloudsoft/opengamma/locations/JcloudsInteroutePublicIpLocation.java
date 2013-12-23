@@ -1,16 +1,13 @@
 package io.cloudsoft.opengamma.locations;
 
-import static brooklyn.util.GroovyJavaMethods.elvis;
 import static brooklyn.util.GroovyJavaMethods.truth;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.jclouds.compute.options.RunScriptOptions.Builder.overrideLoginCredentials;
-import static org.jclouds.scriptbuilder.domain.Statements.exec;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import javax.annotation.Nullable;
 
@@ -26,43 +23,31 @@ import org.jclouds.abiquo.domain.network.Network;
 import org.jclouds.abiquo.domain.task.AsyncTask;
 import org.jclouds.abiquo.features.services.MonitoringService;
 import org.jclouds.compute.ComputeService;
-import org.jclouds.compute.RunNodesException;
 import org.jclouds.compute.domain.ExecResponse;
 import org.jclouds.compute.domain.NodeMetadata;
-import org.jclouds.compute.domain.NodeMetadataBuilder;
-import org.jclouds.compute.domain.Template;
 import org.jclouds.domain.LoginCredentials;
 import org.jclouds.scriptbuilder.domain.Statement;
 import org.jclouds.scriptbuilder.domain.Statements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import brooklyn.location.Location;
-import brooklyn.location.NoMachinesAvailableException;
 import brooklyn.location.jclouds.JcloudsLocation;
-import brooklyn.location.jclouds.JcloudsLocationConfig;
-import brooklyn.location.jclouds.JcloudsLocationCustomizer;
-import brooklyn.location.jclouds.JcloudsMachineNamer;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
-import brooklyn.location.jclouds.JcloudsUtil;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.config.ConfigBag;
-import brooklyn.util.exceptions.Exceptions;
-import brooklyn.util.text.Strings;
-import brooklyn.util.text.TemplateProcessor;
 
 import com.abiquo.server.core.cloud.VirtualMachineState;
 import com.abiquo.server.core.task.enums.TaskState;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
-import com.google.common.base.Splitter;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
+import com.google.common.net.HostAndPort;
 
 public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
 
+    private static final long serialVersionUID = 2759594407476315548L;
     public static final Logger log = LoggerFactory.getLogger(JcloudsInteroutePublicIpLocation.class);
 
     private static final String EXTERNAL_NETWORK_NAME_PREFIX = "CLPU0_IPAC";
@@ -90,154 +75,164 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
         super(map);
     }    
     
-    @Override    
-    public JcloudsSshMachineLocation obtain(Map<?,?> flags) throws NoMachinesAvailableException {
-        /*
-        AccessController.Response access = getManagementContext().getAccessController().canProvisionLocation(this);
-        if (!access.isAllowed()) {
-            throw new IllegalStateException("Access controller forbids provisioning in "+this+": "+access.getMsg());
-        }
-        */
-        ConfigBag setup = ConfigBag.newInstanceExtending(getConfigBag(), flags);
-        setCreationString(setup);
-        
-        final ComputeService computeService = JcloudsUtil.findComputeService(setup);
-        String groupId = elvis(setup.get(GROUP_ID), new JcloudsMachineNamer(setup).generateNewGroupId());
-        NodeMetadata node = null;
-        JcloudsSshMachineLocation sshMachineLocation = null;
-        
-        try {
-            LOG.info("Creating VM in "+setup.getDescription()+" for "+this);
-
-            Template template = buildTemplate(computeService, setup);
-            LoginCredentials initialCredentials = initUserTemplateOptions(template, setup);
-            for (JcloudsLocationCustomizer customizer : getCustomizers(setup)) {
-                customizer.customize(this, computeService, template.getOptions());
-            }
-            LOG.debug("jclouds using template {} / options {} to provision machine in {}", new Object[] {
-                    template, template.getOptions(), setup.getDescription()});
-
-            if (!setup.getUnusedConfig().isEmpty())
-                LOG.debug("NOTE: unused flags passed to obtain VM in "+setup.getDescription()+": "+
-                        setup.getUnusedConfig());
-            
-            Set<? extends NodeMetadata> nodes = computeService.createNodesInGroup(groupId, 1, template);
-            node = Iterables.getOnlyElement(nodes, null);
-            LOG.debug("jclouds created {} for {}", node, setup.getDescription());
-            if (node == null)
-                throw new IllegalStateException("No nodes returned by jclouds create-nodes in " + setup.getDescription());
-
-            LoginCredentials customCredentials = setup.get(CUSTOM_CREDENTIALS);
-            if (customCredentials != null) {
-                initialCredentials = customCredentials;
-                //set userName and other data, from these credentials
-                Object oldUsername = setup.put(USER, customCredentials.getUser());
-                LOG.debug("node {} username {} / {} (customCredentials)", new Object[] { node, customCredentials.getUser(), oldUsername });
-                if (truth(customCredentials.getPassword())) setup.put(PASSWORD, customCredentials.getPassword());
-                if (truth(customCredentials.getPrivateKey())) setup.put(PRIVATE_KEY_DATA, customCredentials.getPrivateKey());
-            }
-            if (initialCredentials == null) {
-                initialCredentials = extractVmCredentials(setup, node);
-                LOG.debug("Extracted credentials from node {}/{}", initialCredentials.getUser(), initialCredentials.getPrivateKey());
-            }
-            if (initialCredentials != null) {
-                node = NodeMetadataBuilder.fromNodeMetadata(node).credentials(initialCredentials).build();
-            } else {
-                // only happens if something broke above...
-                initialCredentials = LoginCredentials.fromCredentials(node.getCredentials());
-            }
-            
-            LOG.debug("jclouds will use the following initial credentials {} for node {}", initialCredentials.getUser(), initialCredentials.getPrivateKey());
-            sshMachineLocation = prepareAndRegisterJcloudsSshMachineLocation(computeService, node, initialCredentials, setup);
-            
-            // Apply same securityGroups rules to iptables, if iptables is running on the node
-            String waitForSshable = setup.get(WAIT_FOR_SSHABLE);
-            if (!(waitForSshable!=null && "false".equalsIgnoreCase(waitForSshable))) {
-               String setupScript = setup.get(JcloudsLocationConfig.CUSTOM_MACHINE_SETUP_SCRIPT_URL);
-                if(Strings.isNonBlank(setupScript)) {
-                   String setupVarsString = setup.get(JcloudsLocationConfig.CUSTOM_MACHINE_SETUP_SCRIPT_VARS);
-                   Map<String, String> substitutions = Splitter.on(",").withKeyValueSeparator(":").split(setupVarsString);
-                   String script = TemplateProcessor.processTemplate(setupScript, substitutions);
-                   sshMachineLocation.execCommands("Customizing node " + this, ImmutableList.of(script));
-                }
-                
-                if (setup.get(JcloudsLocationConfig.MAP_DEV_RANDOM_TO_DEV_URANDOM))
-                   sshMachineLocation.execCommands("using urandom instead of random", 
-                        Arrays.asList("sudo mv /dev/random /dev/random-real", "sudo ln -s /dev/urandom /dev/random"));
-
-                
-                if (setup.get(GENERATE_HOSTNAME)) {
-                   sshMachineLocation.execCommands("Generate hostname " + node.getName(), 
-                         Arrays.asList("sudo hostname " + node.getName(),
-                                       "sudo sed -i \"s/HOSTNAME=.*/HOSTNAME=" + node.getName() + "/g\" /etc/sysconfig/network",
-                                       "sudo bash -c \"echo 127.0.0.1   `hostname` >> /etc/hosts\"")
-                   );
-               }
-/*
-                if (setup.get(OPEN_IPTABLES)) {
-                   List<String> iptablesRules = createIptablesRulesForNetworkInterface((Iterable<Integer>) setup.get(INBOUND_PORTS));
-                   iptablesRules.add(IptablesCommands.saveIptablesRules());
-                   sshMachineLocation.execCommands("Inserting iptables rules", iptablesRules);
-                   sshMachineLocation.execCommands("List iptables rules", ImmutableList.of(IptablesCommands.listIptablesRule()));
-                }
- */                   
-            } else {
-                // Otherwise would break CloudStack, where port-forwarding means that jclouds opinion 
-                // of using port 22 is wrong.
-            }
-            
-            // Apply any optional app-specific customization.
-            for (JcloudsLocationCustomizer customizer : getCustomizers(setup)) {
-                customizer.customize(this, computeService, sshMachineLocation);
-            }
-            
-            return sshMachineLocation;
-        } catch (Exception e) {
-            if (e instanceof RunNodesException && ((RunNodesException)e).getNodeErrors().size() > 0) {
-                node = Iterables.get(((RunNodesException)e).getNodeErrors().keySet(), 0);
-            }
-            boolean destroyNode = (node != null) && Boolean.TRUE.equals(setup.get(DESTROY_ON_FAILURE));
-            
-            LOG.error("Failed to start VM for {}{}: {}", 
-                    new Object[] {setup.getDescription(), (destroyNode ? " (destroying "+node+")" : ""), e.getMessage()});
-            LOG.debug(Throwables.getStackTraceAsString(e));
-            
-            if (destroyNode) {
-                if (sshMachineLocation != null) {
-                    releaseSafely(sshMachineLocation);
-                } else {
-                    releaseNodeSafely(node);
-                }
-            }
-            
-            throw Exceptions.propagate(e);
-            
-        } finally {
-            //leave it open for reuse
-//            computeService.getContext().close();
-        }
-
-    }    
     
-    public JcloudsSshMachineLocation prepareAndRegisterJcloudsSshMachineLocation(ComputeService computeService,
-            NodeMetadata node, LoginCredentials initialCredentials, ConfigBag setup) throws IOException {
-    	// FIXME turning off selinux!
+    /* 2013-12-23: I have attempted to refactor this, and JcloudsLocation, to make the interroute-specific 
+     * calls which are needed using the 0.7.0 code.  BUT I've NOT tested this.
+     * I have left some of the old code here for convenience until we do test/confirm. */
+    
+//    @Override    
+//    public JcloudsSshMachineLocation obtain(Map<?,?> flags) throws NoMachinesAvailableException {
+//        /*
+//        AccessController.Response access = getManagementContext().getAccessController().canProvisionLocation(this);
+//        if (!access.isAllowed()) {
+//            throw new IllegalStateException("Access controller forbids provisioning in "+this+": "+access.getMsg());
+//        }
+//        */
+//        ConfigBag setup = ConfigBag.newInstanceExtending(getConfigBag(), flags);
+//        setCreationString(setup);
+//        
+//        final ComputeService computeService = JcloudsUtil.findComputeService(setup);
+//        String groupId = elvis(setup.get(GROUP_ID), new JcloudsMachineNamer(setup).generateNewGroupId());
+//        NodeMetadata node = null;
+//        JcloudsSshMachineLocation sshMachineLocation = null;
+//        
+//        try {
+//            LOG.info("Creating VM in "+setup.getDescription()+" for "+this);
+//
+//            Template template = buildTemplate(computeService, setup);
+//            LoginCredentials initialCredentials = initUserTemplateOptions(template, setup);
+//            for (JcloudsLocationCustomizer customizer : getCustomizers(setup)) {
+//                customizer.customize(this, computeService, template.getOptions());
+//            }
+//            LOG.debug("jclouds using template {} / options {} to provision machine in {}", new Object[] {
+//                    template, template.getOptions(), setup.getDescription()});
+//
+//            if (!setup.getUnusedConfig().isEmpty())
+//                LOG.debug("NOTE: unused flags passed to obtain VM in "+setup.getDescription()+": "+
+//                        setup.getUnusedConfig());
+//            
+//            Set<? extends NodeMetadata> nodes = computeService.createNodesInGroup(groupId, 1, template);
+//            node = Iterables.getOnlyElement(nodes, null);
+//            LOG.debug("jclouds created {} for {}", node, setup.getDescription());
+//            if (node == null)
+//                throw new IllegalStateException("No nodes returned by jclouds create-nodes in " + setup.getDescription());
+//
+//            LoginCredentials customCredentials = setup.get(CUSTOM_CREDENTIALS);
+//            if (customCredentials != null) {
+//                initialCredentials = customCredentials;
+//                //set userName and other data, from these credentials
+//                Object oldUsername = setup.put(USER, customCredentials.getUser());
+//                LOG.debug("node {} username {} / {} (customCredentials)", new Object[] { node, customCredentials.getUser(), oldUsername });
+//                if (truth(customCredentials.getPassword())) setup.put(PASSWORD, customCredentials.getPassword());
+//                if (truth(customCredentials.getPrivateKey())) setup.put(PRIVATE_KEY_DATA, customCredentials.getPrivateKey());
+//            }
+//            if (initialCredentials == null) {
+//                initialCredentials = extractVmCredentials(setup, node);
+//                LOG.debug("Extracted credentials from node {}/{}", initialCredentials.getUser(), initialCredentials.getPrivateKey());
+//            }
+//            if (initialCredentials != null) {
+//                node = NodeMetadataBuilder.fromNodeMetadata(node).credentials(initialCredentials).build();
+//            } else {
+//                // only happens if something broke above...
+//                initialCredentials = LoginCredentials.fromCredentials(node.getCredentials());
+//            }
+//            
+//            LOG.debug("jclouds will use the following initial credentials {} for node {}", initialCredentials.getUser(), initialCredentials.getPrivateKey());
+//            sshMachineLocation = prepareAndRegisterJcloudsSshMachineLocation(computeService, node, initialCredentials, setup);
+//            
+//            // Apply same securityGroups rules to iptables, if iptables is running on the node
+//            String waitForSshable = setup.get(WAIT_FOR_SSHABLE);
+//            if (!(waitForSshable!=null && "false".equalsIgnoreCase(waitForSshable))) {
+//               String setupScript = setup.get(JcloudsLocationConfig.CUSTOM_MACHINE_SETUP_SCRIPT_URL);
+//                if(Strings.isNonBlank(setupScript)) {
+//                   String setupVarsString = setup.get(JcloudsLocationConfig.CUSTOM_MACHINE_SETUP_SCRIPT_VARS);
+//                   Map<String, String> substitutions = Splitter.on(",").withKeyValueSeparator(":").split(setupVarsString);
+//                   String script = TemplateProcessor.processTemplate(setupScript, substitutions);
+//                   sshMachineLocation.execCommands("Customizing node " + this, ImmutableList.of(script));
+//                }
+//                
+//                if (setup.get(JcloudsLocationConfig.MAP_DEV_RANDOM_TO_DEV_URANDOM))
+//                   sshMachineLocation.execCommands("using urandom instead of random", 
+//                        Arrays.asList("sudo mv /dev/random /dev/random-real", "sudo ln -s /dev/urandom /dev/random"));
+//
+//                
+//                if (setup.get(GENERATE_HOSTNAME)) {
+//                   sshMachineLocation.execCommands("Generate hostname " + node.getName(), 
+//                         Arrays.asList("sudo hostname " + node.getName(),
+//                                       "sudo sed -i \"s/HOSTNAME=.*/HOSTNAME=" + node.getName() + "/g\" /etc/sysconfig/network",
+//                                       "sudo bash -c \"echo 127.0.0.1   `hostname` >> /etc/hosts\"")
+//                   );
+//               }
+///*
+//                if (setup.get(OPEN_IPTABLES)) {
+//                   List<String> iptablesRules = createIptablesRulesForNetworkInterface((Iterable<Integer>) setup.get(INBOUND_PORTS));
+//                   iptablesRules.add(IptablesCommands.saveIptablesRules());
+//                   sshMachineLocation.execCommands("Inserting iptables rules", iptablesRules);
+//                   sshMachineLocation.execCommands("List iptables rules", ImmutableList.of(IptablesCommands.listIptablesRule()));
+//                }
+// */                   
+//            } else {
+//                // Otherwise would break CloudStack, where port-forwarding means that jclouds opinion 
+//                // of using port 22 is wrong.
+//            }
+//            
+//            // Apply any optional app-specific customization.
+//            for (JcloudsLocationCustomizer customizer : getCustomizers(setup)) {
+//                customizer.customize(this, computeService, sshMachineLocation);
+//            }
+//            
+//            return sshMachineLocation;
+//        } catch (Exception e) {
+//            if (e instanceof RunNodesException && ((RunNodesException)e).getNodeErrors().size() > 0) {
+//                node = Iterables.get(((RunNodesException)e).getNodeErrors().keySet(), 0);
+//            }
+//            boolean destroyNode = (node != null) && Boolean.TRUE.equals(setup.get(DESTROY_ON_FAILURE));
+//            
+//            LOG.error("Failed to start VM for {}{}: {}", 
+//                    new Object[] {setup.getDescription(), (destroyNode ? " (destroying "+node+")" : ""), e.getMessage()});
+//            LOG.debug(Throwables.getStackTraceAsString(e));
+//            
+//            if (destroyNode) {
+//                if (sshMachineLocation != null) {
+//                    releaseSafely(sshMachineLocation);
+//                } else {
+//                    releaseNodeSafely(node);
+//                }
+//            }
+//            
+//            throw Exceptions.propagate(e);
+//            
+//        } finally {
+//            //leave it open for reuse
+////            computeService.getContext().close();
+//        }
+//
+//    }    
+
+    @Override
+    protected JcloudsSshMachineLocation registerJcloudsSshMachineLocation(ComputeService computeService, NodeMetadata node, LoginCredentials initialCredentials, Optional<HostAndPort> sshHostAndPort, ConfigBag setup) throws IOException {
+        // FIXME turning off selinux!
         Statement statement = Statements.exec("sed -i.brooklyn.bak 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/sysconfig/selinux");
-		ExecResponse response = computeService.runScriptOnNode(node.getId(), statement, 
-                overrideLoginCredentials(initialCredentials).runAsRoot(true));
-		if (response.getExitStatus() == 0) {
-			log.info(">>> For VM {} in {}, set SELINUX to permissive", new Object[] {node.getName(), this});
-		} else {
-			log.error("For VM {} in {}, failed to set SELINUX to permissive: status={}\n\terr={}\n\tout={}", new Object[] {
-					node.getName(), this, response.getExitStatus(), response.getError(), response.getOutput()});
-		}
-		
+        ExecResponse response = computeService.runScriptOnNode(node.getId(), statement, 
+            overrideLoginCredentials(initialCredentials).runAsRoot(true));
+        if (response.getExitStatus() == 0) {
+            log.info(">>> For VM {} in {}, set SELINUX to permissive", new Object[] {node.getName(), this});
+        } else {
+            log.error("For VM {} in {}, failed to set SELINUX to permissive: status={}\n\terr={}\n\tout={}", new Object[] {
+                node.getName(), this, response.getExitStatus(), response.getError(), response.getOutput()});
+        }
+
         // attach 2nd NIC
-        AbiquoContext abiquoContext = abiquoContext();
-        ExternalIp externalIp = attachSecondNic(node, abiquoContext);
-        String vmHostname = externalIp.getIp();
-        log.info(">>> For VM {} in {}, using IP {}", new Object[] {node.getName(), this, vmHostname});
-        return registerJcloudsSshMachineLocation(node, vmHostname, setup);
+        Optional<AbiquoContext> abiquoContext = abiquoContext();
+        if (abiquoContext.isPresent()) {
+            ExternalIp externalIp = attachSecondNic(node, abiquoContext.get());
+            String vmHostname = externalIp.getIp();
+            log.info(">>> For VM {} in {}, using IP {}", new Object[] {node.getName(), this, vmHostname});
+        } else {
+            log.info(">>> For VM {} in {}, skipping external NIC as not abiquo", new Object[] {node.getName(), this});            
+        }
+        
+        return super.registerJcloudsSshMachineLocation(computeService, node, initialCredentials, sshHostAndPort, setup);
     }
 
     private ExternalIp attachSecondNic(NodeMetadata node, AbiquoContext context) {
@@ -269,20 +264,16 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
         }
     }
 
-    private AbiquoContext abiquoContext() {
-        if (this != null) {
-            log.info(">>> Provider " + this.getProvider());
-            if ("abiquo".equals(this.getProvider())) {
-                return ContextBuilder.newBuilder(this.getProvider()).endpoint(this.getEndpoint())
-                        .credentials(this.getIdentity(), this.getCredential()).buildView(AbiquoContext.class);
-            }
-        } else {
-            log.info(">>> Location " + this + " not a jclouds-location; ignoring for nic setup");
+    private Optional<AbiquoContext> abiquoContext() {
+        log.info(">>> Provider " + this.getProvider());
+        if ("abiquo".equals(this.getProvider())) {
+            return Optional.of(ContextBuilder.newBuilder(this.getProvider()).endpoint(this.getEndpoint())
+                    .credentials(this.getIdentity(), this.getCredential()).buildView(AbiquoContext.class));
         }
-        return null;
+        return Optional.absent();
     }
 
-    private String getPublicHostname(NodeMetadata node) {
+    protected String getPublicHostname(NodeMetadata node, Optional<HostAndPort> sshHostAndPort, ConfigBag setup) {
         // prefer the public address to the hostname because hostname is sometimes wrong/abbreviated
         // (see that javadoc; also e.g. on rackspace, the hostname lacks the domain)
         // TODO would it be better to prefer hostname, but first check that it is resolvable?
@@ -293,7 +284,7 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
         } else if (truth(node.getPrivateAddresses())) {
             return node.getPrivateAddresses().iterator().next();
         } else {
-            return null;
+            return super.getPublicHostname(node, sshHostAndPort, setup);
         }
     }
 
