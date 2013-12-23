@@ -1,11 +1,6 @@
 package io.cloudsoft.opengamma.app;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-
-import brooklyn.entity.basic.AbstractApplication;
-import brooklyn.entity.basic.SoftwareProcess;
-import brooklyn.entity.database.postgresql.PostgreSqlSpecs;
-import brooklyn.location.jclouds.JcloudsLocationConfig;
 import io.cloudsoft.opengamma.CustomNginxControllerImpl;
 import io.cloudsoft.opengamma.cluster.OpenGammaClusterFactory;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
@@ -21,13 +16,14 @@ import brooklyn.config.StringConfigMap;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
+import brooklyn.entity.basic.AbstractApplication;
 import brooklyn.entity.basic.BasicStartable;
-import brooklyn.entity.basic.ConfigKeys;
-import brooklyn.entity.basic.BasicStartable.LocationsFilter;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityFactory;
+import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.basic.StartableApplication;
 import brooklyn.entity.database.postgresql.PostgreSqlNode;
+import brooklyn.entity.database.postgresql.PostgreSqlSpecs;
 import brooklyn.entity.dns.geoscaling.GeoscalingDnsService;
 import brooklyn.entity.group.DynamicFabric;
 import brooklyn.entity.group.DynamicRegionsFabric;
@@ -43,6 +39,7 @@ import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
 import brooklyn.location.basic.Locations;
 import brooklyn.location.basic.PortRanges;
+import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.util.CommandLineUtil;
 import brooklyn.util.collections.MutableMap;
 

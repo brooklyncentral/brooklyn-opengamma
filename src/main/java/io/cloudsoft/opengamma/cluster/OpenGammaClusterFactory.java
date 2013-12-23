@@ -1,5 +1,9 @@
 package io.cloudsoft.opengamma.cluster;
 
+import io.cloudsoft.opengamma.app.ClusteredOpenGammaApplication;
+import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
+import io.cloudsoft.opengamma.server.OpenGammaServer;
+
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -24,9 +28,6 @@ import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.policy.ha.ServiceFailureDetector;
 import brooklyn.policy.ha.ServiceReplacer;
 import brooklyn.policy.ha.ServiceRestarter;
-import io.cloudsoft.opengamma.app.ClusteredOpenGammaApplication;
-import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
-import io.cloudsoft.opengamma.server.OpenGammaServer;
 
 public class OpenGammaClusterFactory implements EntityFactory<ControlledDynamicWebAppCluster> {
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaClusterFactory.class);
@@ -57,7 +58,7 @@ public class OpenGammaClusterFactory implements EntityFactory<ControlledDynamicW
     }
 
     @Override
-    public ControlledDynamicWebAppCluster newEntity(Map flags, Entity parent) {
+    public ControlledDynamicWebAppCluster newEntity(@SuppressWarnings("rawtypes") Map flags, Entity parent) {
         ControlledDynamicWebAppCluster ogWebCluster = parent.addChild(getClusterSpec());
         initAggregatingMetrics(ogWebCluster);
         initResilience(ogWebCluster);

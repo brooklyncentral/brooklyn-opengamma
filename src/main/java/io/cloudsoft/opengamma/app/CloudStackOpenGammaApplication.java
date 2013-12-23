@@ -1,6 +1,12 @@
 package io.cloudsoft.opengamma.app;
 
 import static brooklyn.event.basic.DependentConfiguration.attributeWhenReady;
+import io.cloudsoft.networking.cloudstack.legacy.LegacyAbstractSubnetApp;
+import io.cloudsoft.networking.cloudstack.legacy.LegacySubnetTier;
+import io.cloudsoft.networking.cloudstack.loadbalancer.CloudStackLoadBalancer;
+import io.cloudsoft.networking.subnet.SubnetTier;
+import io.cloudsoft.opengamma.cluster.OpenGammaClusterFactory;
+import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,14 +15,10 @@ import org.jclouds.cloudstack.domain.FirewallRule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
-
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.enricher.basic.SensorTransformingEnricher;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.BasicStartable;
-import brooklyn.entity.basic.BasicStartable.LocationsFilter;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityAndAttribute;
 import brooklyn.entity.basic.EntityFactory;
@@ -32,6 +34,7 @@ import brooklyn.event.Sensor;
 import brooklyn.event.SensorEvent;
 import brooklyn.event.SensorEventListener;
 import brooklyn.launcher.BrooklynLauncher;
+import brooklyn.location.basic.Locations;
 import brooklyn.location.basic.PortRanges;
 import brooklyn.location.jclouds.JcloudsLocationConfig;
 import brooklyn.util.CommandLineUtil;
@@ -39,12 +42,9 @@ import brooklyn.util.collections.MutableMap;
 import brooklyn.util.net.Cidr;
 import brooklyn.util.text.Identifiers;
 import brooklyn.util.text.Strings;
-import io.cloudsoft.networking.cloudstack.legacy.LegacyAbstractSubnetApp;
-import io.cloudsoft.networking.cloudstack.legacy.LegacySubnetTier;
-import io.cloudsoft.networking.cloudstack.loadbalancer.CloudStackLoadBalancer;
-import io.cloudsoft.networking.subnet.SubnetTier;
-import io.cloudsoft.opengamma.cluster.OpenGammaClusterFactory;
-import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
+
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 
 /**
  * Differences from {@link ElasticOpenGammaApplication}: creates an OpenGamma cluster with
@@ -73,7 +73,7 @@ public class CloudStackOpenGammaApplication extends LegacyAbstractSubnetApp impl
         // Define the stock service entities: a message bus broker and database server
         BasicStartable backend = subnet.addChild(EntitySpec.create(BasicStartable.class)
                 .displayName("OpenGamma Back-End")
-                .configure(BasicStartable.LOCATIONS_FILTER, LocationsFilter.USE_FIRST_LOCATION));
+                .configure(BasicStartable.LOCATIONS_FILTER, Locations.USE_FIRST_LOCATION));
 
         final ActiveMQBroker broker = backend.addChild(EntitySpec.create(ActiveMQBroker.class));
         final PostgreSqlNode database = backend.addChild(PostgreSqlSpecs.spec()
@@ -143,11 +143,12 @@ public class CloudStackOpenGammaApplication extends LegacyAbstractSubnetApp impl
     }
 
     // An entity lifecycle debugging aid
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private void logNewSensorValuesOn(Entity entity, Sensor... sensors) {
         final String entityName = entity.getDisplayName();
         for (Sensor<?> sensor : sensors) {
             final String sensorName = sensor.getName();
-            subscribe(entity, sensor, new   SensorEventListener() {
+            subscribe(entity, sensor, new SensorEventListener() {
                 @Override
                 public void onEvent(SensorEvent event) {
                     LOG.info("New event on {}/{}: {}", new Object[]{entityName, sensorName, event.getValue()});
