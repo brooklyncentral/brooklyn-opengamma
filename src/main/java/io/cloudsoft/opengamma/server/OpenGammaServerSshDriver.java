@@ -239,9 +239,9 @@ should effectively nullify the [activeMQ] section in the ini file
                 if (database.getAttribute(DB_INITIALISED) != Boolean.TRUE) {
                     isInitial = true;
                     log.info("{}: Initialising database on {}", entity, database);
-                    newScript(CUSTOMIZING)
+                    newScript("initialising OG db")
                             .updateTaskAndFailOnNonZeroResultCode()
-                            .body.append("cd opengamma", "unset JAVA_HOME", "scripts/init-brooklyn-db.sh")
+                            .body.append("cd "+getRunDir(), "cd opengamma", "unset JAVA_HOME", "scripts/init-brooklyn-db.sh")
                             .execute();
                     ((EntityLocal)database).setAttribute(DB_INITIALISED, true);
                 } else {
