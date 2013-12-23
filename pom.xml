@@ -14,7 +14,7 @@
 
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.3.1</testng.version>
-        <brooklyn.version>0.6.0-SNAPSHOT</brooklyn.version>
+        <brooklyn.version>0.6.0</brooklyn.version>
     </properties>
 
     <dependencies>
@@ -22,28 +22,7 @@
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-all</artifactId>
             <version>${brooklyn.version}</version>
-            <exclusions>
-            	<exclusion>
-            		<artifactId>softlayer</artifactId>
-            		<groupId>org.apache.jclouds.provider</groupId>
-            	</exclusion>
-            </exclusions>
         </dependency>
-        <dependency>
-            <groupId>org.apache.jclouds.provider</groupId>
-            <artifactId>softlayer</artifactId>
-            <version>1.6.3-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.jclouds.labs</groupId>
-            <artifactId>google-compute-engine</artifactId>
-            <version>1.6.3-SNAPSHOT</version>
-        </dependency>         
-        <dependency>
-            <groupId>org.apache.jclouds.labs</groupId>
-            <artifactId>abiquo</artifactId>
-            <version>1.6.3-SNAPSHOT</version>
-        </dependency> 
         <dependency>
             <groupId>io.brooklyn</groupId>
             <artifactId>brooklyn-logback-xml</artifactId>
