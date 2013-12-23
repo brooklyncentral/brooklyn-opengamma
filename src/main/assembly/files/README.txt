@@ -47,10 +47,10 @@ You can also run it using the `brooklyn` CLI tool, similarly to how the Brooklyn
 at http://brooklyncentral.github.com/ :
 
         export BROOKLYN_CLASSPATH=target/brooklyn-opengamma-0.1.0-SNAPSHOT.jar
-        brooklyn launch -a io.cloudsoft.opengamma.OpenGammaCluster -l aws-ec2:us-east-1
+        brooklyn launch -a io.cloudsoft.opengamma.ElasticOpenGammaApplication -l aws-ec2:us-east-1
 
 And, of course, as it's just java, you can run it in any number of ways (such as an IDE), 
-pointing at the static `main` in `io.cloudsoft.opengamma.OpenGammaCluster`.
+pointing at the static `main` in `io.cloudsoft.opengamma.ElasticOpenGammaApplication`.
 
 
 ### Demo

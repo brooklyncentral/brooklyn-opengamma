@@ -1,7 +1,7 @@
 <included>
-    <!-- filename to log to -->           
-    <property name="logging.basename" scope="context" value="brooklyn-opengamma.log" />
-    
+    <!-- filename to log to -->
+    <property name="logging.basename" scope="context" value="brooklyn-opengamma" />
+
     <!-- additional loggers -->
     <logger name="io.cloudsoft.opengamma" level="DEBUG"/>
 </included>
