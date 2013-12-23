@@ -24,7 +24,9 @@ import brooklyn.event.feed.jmx.JmxHelper;
 import brooklyn.location.MachineProvisioningLocation;
 import brooklyn.location.access.BrooklynAccessUtils;
 import brooklyn.location.jclouds.templates.PortableTemplateBuilder;
+import brooklyn.util.exceptions.Exceptions;
 import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
 
 import com.google.common.base.Functions;
 import com.google.common.net.HostAndPort;
@@ -129,10 +131,21 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
                 PROCESSING_TIME_PER_SECOND_LAST, PROCESSING_TIME_PER_SECOND_IN_WINDOW,
                 WebAppServiceMethods.DEFAULT_WINDOW_DURATION));
 
-        // many of the stats only are available once we explicitly turn them on
-        Object jettyStatsOnResult = new JmxHelper(this).operation(JmxHelper.createObjectName("com.opengamma.jetty:service=HttpConnector"), 
-                "setStatsOn", true);
-        log.debug("result of setStatsOn for "+this+": "+jettyStatsOnResult);
+        // turn stats on, allowing a few sleep-then-retries in case the server isn't yet up
+        for (int i=3; i<=0; i--) {
+            try {
+                // many of the stats only are available once we explicitly turn them on
+                Object jettyStatsOnResult = new JmxHelper(this).operation(JmxHelper.createObjectName("com.opengamma.jetty:service=HttpConnector"), 
+                    "setStatsOn", true);
+                log.debug("result of setStatsOn for "+this+": "+jettyStatsOnResult);
+                break;
+            } catch (Exception e) {
+                Exceptions.propagateIfFatal(e);
+                if (i==0)
+                    throw Exceptions.propagate(e);
+                Time.sleep(Duration.TEN_SECONDS);
+            }
+        }
     }
     
     @Override
