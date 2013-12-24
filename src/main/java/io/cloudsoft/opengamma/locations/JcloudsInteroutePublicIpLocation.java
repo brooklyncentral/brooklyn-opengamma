@@ -250,7 +250,7 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
             VirtualMachine virtualMachine = optionalVirtualMachine.get();
             Enterprise enterprise = context.getAdministrationService().getCurrentEnterprise();
             Datacenter datacenter = virtualMachine.getVirtualDatacenter().getDatacenter();
-            List<ExternalNetwork> externalNetworks = listExternalNetworks(enterprise, datacenter);
+            Iterable<ExternalNetwork> externalNetworks = listExternalNetworks(enterprise, datacenter);
             ExternalNetwork externalNetwork = tryFindExternalNetwork(externalNetworks, EXTERNAL_NETWORK_NAME_PREFIX);
             log.info(">>> Found externalNetwork " + externalNetwork + " in datacenter " + datacenter);
             // reconfigure NICs on that virtualMachine
@@ -312,12 +312,12 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
     }
 
     private ExternalIp tryFindExternalIp(ExternalNetwork externalNetwork) {
-        List<ExternalIp> listUnusedIps = externalNetwork.listUnusedIps();
-        if (listUnusedIps != null && listUnusedIps.isEmpty()) {
+        Iterable<ExternalIp> listUnusedIps = externalNetwork.listUnusedIps();
+        if (listUnusedIps == null || !listUnusedIps.iterator().hasNext()) {
             throw new IllegalStateException("Cannot find an available externalIp in external network "
                     + externalNetwork);
         }
-        Optional<ExternalIp> optionalExternalIp = Optional.of(listUnusedIps.get(0));
+        Optional<ExternalIp> optionalExternalIp = Optional.of(listUnusedIps.iterator().next());
         if (optionalExternalIp.isPresent()) {
             return optionalExternalIp.get();
         } else {
@@ -326,7 +326,7 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
         }
     }
 
-    private ExternalNetwork tryFindExternalNetwork(List<ExternalNetwork> externalNetworks,
+    private ExternalNetwork tryFindExternalNetwork(Iterable<ExternalNetwork> externalNetworks,
             final String externalNetworkName) {
         Optional<ExternalNetwork> optionalExternalNetwork = Iterables.tryFind(externalNetworks,
                 new ExternalNetworkPredicate(externalNetworkName));
@@ -339,7 +339,7 @@ public class JcloudsInteroutePublicIpLocation extends JcloudsLocation {
         }
     }
 
-    private List<ExternalNetwork> listExternalNetworks(Enterprise enterprise, Datacenter datacenter) {
+    private Iterable<ExternalNetwork> listExternalNetworks(Enterprise enterprise, Datacenter datacenter) {
         return enterprise.listExternalNetworks(datacenter);
     }
 
