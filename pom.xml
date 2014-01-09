@@ -15,7 +15,6 @@
         <groovy.version>1.8.6</groovy.version>
         <testng.version>6.8</testng.version>
         <brooklyn.version>0.7.0-SNAPSHOT</brooklyn.version>
-        <jclouds.version>1.6.3-SNAPSHOT</jclouds.version>
         <networking.version>0.2.0-SNAPSHOT</networking.version>
     </properties>
 
