@@ -58,8 +58,8 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
             // need a beefy machine
             .os64Bit(true)
             .minRam(8192)
-            // either should work... but let's standardise for now
-            .osFamily(OsFamily.UBUNTU).osVersionMatches("12.04")
+            // either should work... however ubuntu not available in GCE
+//          .osFamily(OsFamily.UBUNTU).osVersionMatches("12.04")
 //          .osFamily(OsFamily.CENTOS)
             );
         return flags;
