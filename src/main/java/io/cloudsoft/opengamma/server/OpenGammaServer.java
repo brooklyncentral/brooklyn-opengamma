@@ -1,5 +1,10 @@
 package io.cloudsoft.opengamma.server;
 
+import java.util.List;
+import java.util.Map;
+
+import com.google.common.reflect.TypeToken;
+
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.basic.BrooklynConfigKeys;
 import brooklyn.entity.basic.ConfigKeys;
@@ -46,11 +51,28 @@ public interface OpenGammaServer extends SoftwareProcess, WebAppService {
     ConfigKey<PostgreSqlNode> DATABASE = new BasicConfigKey<PostgreSqlNode>(PostgreSqlNode.class,
             "opengamma.services.database.entity", "The entity representing the OpenGamma database server");
 
-    @SetFromFlag("serverProperties")
-    ConfigKey<String> PROPERTIES_TEMPLATE_URL = ConfigKeys.newConfigKey(
-            "opengamma.server.config", "Properties file in freemarker format for configuration of OpenGamma servers. " +
-            "The given file will be the first entry in the OpenGamma configuration chain.",
-            "classpath:/io/cloudsoft/opengamma/config/brooklyn/brooklyn.properties");
+    @SetFromFlag("configToCopy")
+    ConfigKey<Map<String, String>> CONFIG_FILES_TO_COPY = ConfigKeys.newConfigKey(
+            new TypeToken<Map<String, String>>() {}, "opengamma.server.config.copy",
+            "URLs to files that will be copied to each OpenGamma server at the given path, " +
+            "relative to the server's OpenGamma subdirectory, in the server's customise phase.");
+
+    @SetFromFlag("configToTemplateAndCopy")
+    ConfigKey<Map<String, String>> CONFIG_FILES_TO_TEMPLATE_AND_COPY = ConfigKeys.newConfigKey(
+            new TypeToken<Map<String, String>>() {}, "opengamma.server.config.template",
+            "URLs to files that will be templated and copied to each OpenGamma server at the given path, " +
+            "relative to the server's OpenGamma subdirectory, in the server's customise phase.");
+
+    @SetFromFlag("extraScripts")
+    ConfigKey<List<String>> EXTRA_SCRIPTS = ConfigKeys.newConfigKey(
+            new TypeToken<List<String>>() {},
+            "opengamma.server.config.extraScripts",
+            "Extra scripts to be copied to the OpenGamma server's script directory with permissions 755");
+
+    @SetFromFlag("startScript")
+    ConfigKey<String> SERVER_START_SCRIPT = ConfigKeys.newStringConfigKey(
+            "opengamma.server.config.startScript",
+            "The script to run to start OpenGamma. Give a path relative to the server's OpenGamma directory");
 
     AttributeSensor<Boolean> DATABASE_INITIALIZED =
         new BasicAttributeSensor<Boolean>(Boolean.class, "opengamma.db.completed", "OG database completely initialised");

@@ -28,6 +28,7 @@ import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.policy.ha.ServiceFailureDetector;
 import brooklyn.policy.ha.ServiceReplacer;
 import brooklyn.policy.ha.ServiceRestarter;
+import io.cloudsoft.opengamma.server.SimulatedExamplesServer;
 
 public class OpenGammaClusterFactory implements EntityFactory<ControlledDynamicWebAppCluster> {
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaClusterFactory.class);
@@ -71,7 +72,8 @@ public class OpenGammaClusterFactory implements EntityFactory<ControlledDynamicW
                 .displayName("Load-Balanced Cluster")
                 .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
                 .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC,
-                        EntitySpec.create(OpenGammaServer.class).displayName("OpenGamma Server")
+                        EntitySpec.create(SimulatedExamplesServer.class)
+                                .displayName("OpenGamma Server")
                                 .configure(OpenGammaServer.BROKER, broker)
                                 .configure(OpenGammaServer.DATABASE, database));
     }

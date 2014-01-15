@@ -1,9 +1,15 @@
 package io.cloudsoft.opengamma.server;
 
-import java.io.StringReader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+
+import com.google.common.base.Predicates;
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
+import com.google.common.net.HostAndPort;
 
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
@@ -30,12 +36,6 @@ import brooklyn.util.task.system.ProcessTaskWrapper;
 import brooklyn.util.text.Strings;
 import brooklyn.util.time.Duration;
 import brooklyn.util.time.Time;
-
-import com.google.common.base.Predicates;
-import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.common.net.HostAndPort;
 
 public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaServerDriver {
 
@@ -94,20 +94,67 @@ public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver imple
         return Strings.replaceAllNonRegex(getEntity().getConfig(OpenGammaServer.DOWNLOAD_ARCHIVE_SUBPATH),
             "${version}", getVersion());
     }
-    
-    protected String OPENGAMMA_SUBDIR() {
-        return "opengamma";
-//        return getDownloadArchiveSubpath(); 
+
+    /** @return The absolute path to the OpenGamma application on the server */
+    protected String getOpenGammaDirectory() {
+        return getRunDir() + "/opengamma";
     }
-    protected String LIB_OVERRIDE_SUBDIR() { return OPENGAMMA_SUBDIR() + "/lib/override"; }
-    protected String TEMP_SUBDIR() { return OPENGAMMA_SUBDIR() + "/temp"; }
-    protected String SCRIPT_SUBDIR() { return OPENGAMMA_SUBDIR() + "/scripts"; }
-    protected String CONFIG_SUBDIR() { return OPENGAMMA_SUBDIR() + "/config"; }
-    protected String COMMON_SUBDIR() { return CONFIG_SUBDIR() + "/common"; }
-    protected String LOGS_SUBDIR() { return OPENGAMMA_SUBDIR() + "/logs"; }
-    protected String DATA_SUBDIR() { return OPENGAMMA_SUBDIR() + "/data"; }
-    protected String BROOKLYN_CONFIG_SUBDIR() { return CONFIG_SUBDIR() + "/brooklyn"; }
-//    protected String TOOLCONTEXT_SUBDIR() { return CONFIG_SUBDIR() + "/toolcontext"; }
+
+    protected String getLibOverrideDirectory() {
+        return getOpenGammaDirectory() + "/lib/override";
+    }
+
+    protected String getTempDirectory() {
+        return getOpenGammaDirectory() + "/temp";
+    }
+
+    protected String getScriptsDirectory() {
+        return getOpenGammaDirectory() + "/scripts";
+    }
+
+    protected String getConfigDirectory() {
+        return getOpenGammaDirectory() + "/config";
+    }
+
+    protected String getCommonDirectory() {
+        return getConfigDirectory() + "/common";
+    }
+
+    protected String getLogsDirectory() {
+        return getOpenGammaDirectory() + "/logs";
+    }
+
+    protected String getDataDirectory() {
+        return getOpenGammaDirectory() + "/data";
+    }
+
+    protected String getBrooklynConfigurationDirectory() {
+        return getConfigDirectory() + "/brooklyn";
+    }
+
+    @Override
+    protected String getLogFileLocation() {
+        return getLogsDirectory() + "/jetty.log";
+    }
+
+    protected String getPidFileRelativeToRunDir() {
+        return getDataDirectory() + "/og-brooklyn.pid";
+    }
+
+    protected String getServerStartupScript() {
+        return entity.getConfig(OpenGammaServer.SERVER_START_SCRIPT);
+    }
+
+    @Override
+    public Map<String, String> getShellEnvironment() {
+        Map<String,String> env = super.getShellEnvironment();
+
+        // rename JAVA_OPTS to what OG scripts expect
+        String jopts = env.remove("JAVA_OPTS");
+        if (jopts != null) env.put("EXTRA_JVM_OPTS", jopts);
+
+        return env;
+    }
 
     @Override
     public void install() {
@@ -156,48 +203,58 @@ should effectively nullify the [activeMQ] section in the ini file
         // Copy the install files to the run-dir
         newScript(CUSTOMIZING)
             .updateTaskAndFailOnNonZeroResultCode()
-            .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName(getDownloadArchiveSubpath())+" "+OPENGAMMA_SUBDIR())
+            .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName(getDownloadArchiveSubpath())+" "+ getOpenGammaDirectory())
             // create the dirs where we will put config files
-            .body.append("mkdir -p " + TEMP_SUBDIR())
-            .body.append("mkdir -p " + COMMON_SUBDIR())
-            .body.append("mkdir -p " + BROOKLYN_CONFIG_SUBDIR())
-            .body.append("mkdir -p " + LIB_OVERRIDE_SUBDIR())
+            .body.append("mkdir -p " + getTempDirectory())
+            .body.append("mkdir -p " + getCommonDirectory())
+            .body.append("mkdir -p " + getBrooklynConfigurationDirectory())
+            .body.append("mkdir -p " + getLibOverrideDirectory())
             // scripts may try to access these before they are created
-            .body.append("mkdir -p " + LOGS_SUBDIR())
-            .body.append("mkdir -p " + DATA_SUBDIR())
+            .body.append("mkdir -p " + getLogsDirectory())
+            .body.append("mkdir -p " + getDataDirectory())
             // install the postgres jar (FIXME should be done as install step ideally)
             .body.append(BashCommands.commandToDownloadUrlAs(
                 "http://jdbc.postgresql.org/download/postgresql-9.2-1003.jdbc4.jar",
-                LIB_OVERRIDE_SUBDIR()+"/postgresql-9.2-1003.jdbc4.jar"))
+                getLibOverrideDirectory()+"/postgresql-9.2-1003.jdbc4.jar"))
             .execute();
 
-        String[] fileNamesToCopyLiterally = {
-                "classpath:/io/cloudsoft/opengamma/config/brooklyn/brooklyn-infrastructure-spring.xml",
-                "classpath:/io/cloudsoft/opengamma/config/brooklyn/brooklyn.ini"
-        };
-        String[] filesToCopyTemplated = {
-                getPropertiesTemplateUrl()
-        };
-        for (String name : fileNamesToCopyLiterally) {
-            String contents = getResourceAsString(name);
-            String filename = name.substring(name.lastIndexOf('/') + 1);
-            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), filename));
+        // TODO: Make sure destination directories already exist
+        Map<String, String> filesToCopyLiterally = entity.getConfig(OpenGammaServer.CONFIG_FILES_TO_COPY);
+        if (filesToCopyLiterally != null) {
+            for (Entry<String, String> nameAndDestination : filesToCopyLiterally.entrySet()) {
+                String destination = Urls.mergePaths(getOpenGammaDirectory(), nameAndDestination.getValue());
+                String contents = getResourceAsString(nameAndDestination.getKey());
+                getMachine().copyTo(KnownSizeInputStream.of(contents), destination);
+            }
         }
-        for (String name : filesToCopyTemplated) {
-            String contents = processTemplate(name);
-            String filename = name.substring(name.lastIndexOf('/') + 1);
-            getMachine().copyTo(KnownSizeInputStream.of(contents), Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), filename));
+
+        // TODO: Make sure destination directories already exist
+        Map<String, String> filesToCopyTemplated = entity.getConfig(OpenGammaServer.CONFIG_FILES_TO_TEMPLATE_AND_COPY);
+        if (filesToCopyTemplated != null) {
+            for (Entry<String, String> nameAndDestination : filesToCopyTemplated.entrySet()) {
+                String destination = Urls.mergePaths(getOpenGammaDirectory(), nameAndDestination.getValue());
+                String contents = processTemplate(nameAndDestination.getKey());
+                getMachine().copyTo(KnownSizeInputStream.of(contents), destination);
+            }
+        }
+
+        for (String script : entity.getConfig(OpenGammaServer.EXTRA_SCRIPTS)) {
+            String name = script.substring(script.lastIndexOf("/") + 1);
+            String contents = getResourceAsString(script);
+            String destination = Urls.mergePaths(getScriptsDirectory(), name);
+            getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"),
+                    KnownSizeInputStream.of(contents), destination);
         }
 
         // needed for 2.1.0 due as workaround for https://github.com/OpenGamma/OG-Platform/pull/6
         // (remove once that is fixed in OG)
         copyResource("classpath:/io/cloudsoft/opengamma/config/patches/patch-postgres-rsk-v-51.jar",
-                getRunDir() + "/" + LIB_OVERRIDE_SUBDIR() + "/patch-postgres-rsk-v-51.jar");
+                getLibOverrideDirectory() + "/patch-postgres-rsk-v-51.jar");
         // patch does not work due to local classloading -- we need to rebuild the jar
-        newScript("patching postgres rsk")
+        newScript("patching postgres rsk and making start script executable")
             .updateTaskAndFailOnNonZeroResultCode()
-            .body.append("cd "+getRunDir(),
-                "cd "+LIB_OVERRIDE_SUBDIR(),
+            .body.append(
+                "cd "+ getLibOverrideDirectory(),
                 "mkdir tmp", 
                 "cd tmp",
                 "unzip ../../og-masterdb-2.1.0.jar",
@@ -209,24 +266,11 @@ should effectively nullify the [activeMQ] section in the ini file
                 "cd ..",
                 "rm -rf tmp",
                 "rm -f patch-postgres-rsk-v-51.jar",
-                "mv og-masterdb-2.1.0.jar ..")
+                "mv og-masterdb-2.1.0.jar ..",
+                "chmod 755 " + getOpenGammaDirectory() + "/" + getServerStartupScript())
             .failOnNonZeroResultCode()
             .execute();
         
-        copyResource("classpath:/io/cloudsoft/opengamma/config/jetty-spring.xml",
-                getRunDir() + "/" + COMMON_SUBDIR() + "/jetty-spring.xml");
-        copyResource(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), 
-                "classpath:/io/cloudsoft/opengamma/scripts/og-brooklyn.sh",
-                getRunDir() + "/" + SCRIPT_SUBDIR() + "/og-brooklyn.sh");
-
-        String toolcontextContents = processTemplate("classpath:/io/cloudsoft/opengamma/config/brooklyn/toolcontext-example.properties");
-        String toolcontextDestination = Urls.mergePaths(getRunDir(), BROOKLYN_CONFIG_SUBDIR(), "toolcontext-example.properties");
-        getMachine().copyTo(new StringReader(toolcontextContents), toolcontextDestination);
-
-        String scriptContents = getResourceAsString("classpath:/io/cloudsoft/opengamma/scripts/init-brooklyn-db.sh");
-        String scriptDestination = Urls.mergePaths(getRunDir(), SCRIPT_SUBDIR(), "init-brooklyn-db.sh");
-        getMachine().copyTo(MutableMap.of(SshTool.PROP_PERMISSIONS.getName(), "0755"), new StringReader(scriptContents), scriptDestination);
-
         // wait for DB up, of course
         attributeWhenReady(OpenGammaServer.DATABASE, PostgreSqlNode.SERVICE_UP);
 
@@ -265,7 +309,7 @@ should effectively nullify the [activeMQ] section in the ini file
         if (!isInitial) {
             // have seen errors if two cluster nodes start at the same time, subsequent may try to initialize database
             Boolean up = database.getAttribute(OpenGammaServer.DATABASE_INITIALIZED);
-            if (up==Boolean.TRUE) {
+            if (Boolean.TRUE.equals(up)) {
                 log.debug("OG server "+getEntity()+" is not initial, but database is already up, so continuing");
             } else {
                 log.info("OG server "+getEntity()+" is not initial, waiting on database to be completely initialised");
@@ -280,7 +324,7 @@ should effectively nullify the [activeMQ] section in the ini file
                 .body.append(
                         "cd opengamma",
                         "unset JAVA_HOME",
-                        "nohup scripts/og-brooklyn.sh start",
+                        "nohup "+getServerStartupScript()+" start",
                         /* sleep needed sometimes else the java process - the last thing done by the script -
                          * does not seem to start; it is being invoked as `exec (setsid) java ... < /dev/null &` */
                         "sleep 3")
@@ -310,30 +354,6 @@ should effectively nullify the [activeMQ] section in the ini file
                 .execute();
     }
 
-    @Override
-    protected String getLogFileLocation() {
-        return getRunDir() + "/opengamma/logs/jetty.log";
-    }
-
-    protected String getPidFileRelativeToRunDir() {
-        return "opengamma/data/og-brooklyn.pid";
-    }
-
-    protected String getPropertiesTemplateUrl() {
-        return entity.getConfig(OpenGammaServer.PROPERTIES_TEMPLATE_URL);
-    }
-
-    @Override
-    public Map<String, String> getShellEnvironment() {
-        Map<String,String> env = super.getShellEnvironment();
-
-        // rename JAVA_OPTS to what OG scripts expect
-        String jopts = env.remove("JAVA_OPTS");
-        if (jopts != null) env.put("EXTRA_JVM_OPTS", jopts);
-
-        return env;
-    }
-    
     @Override
     public boolean installJava() {
         try {

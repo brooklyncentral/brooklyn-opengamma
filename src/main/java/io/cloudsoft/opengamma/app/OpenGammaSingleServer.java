@@ -1,12 +1,11 @@
 package io.cloudsoft.opengamma.app;
 
-import io.cloudsoft.opengamma.CustomNginxControllerImpl;
-import io.cloudsoft.opengamma.server.OpenGammaServer;
-
 import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.Lists;
 
 import brooklyn.catalog.CatalogConfig;
 import brooklyn.config.ConfigKey;
@@ -24,8 +23,9 @@ import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.util.CommandLineUtil;
-
-import com.google.common.collect.Lists;
+import io.cloudsoft.opengamma.CustomNginxControllerImpl;
+import io.cloudsoft.opengamma.server.OpenGammaServer;
+import io.cloudsoft.opengamma.server.SimulatedExamplesServer;
 
 public class OpenGammaSingleServer extends AbstractApplication implements StartableApplication {
 
@@ -49,7 +49,7 @@ public class OpenGammaSingleServer extends AbstractApplication implements Starta
 
         // Add the OG server configured with external services
         OpenGammaServer web = addChild(
-                EntitySpec.create(OpenGammaServer.class)
+                EntitySpec.create(SimulatedExamplesServer.class)
                         .displayName("OpenGamma Server")
                         .configure(OpenGammaServer.BROKER, broker)
                         .configure(OpenGammaServer.DATABASE, database));
