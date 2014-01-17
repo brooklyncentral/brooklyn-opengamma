@@ -64,7 +64,7 @@ public class OpenGammaMonitoringAggregation {
         for (List<? extends AttributeSensor<? extends Number>> es : summingEnricherSetup) {
             AttributeSensor<? extends Number> t = es.get(0);
             AttributeSensor<? extends Number> total = es.get(1);
-            CustomAggregatingEnricher<?,?> totaller = CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true), t, total);
+            CustomAggregatingEnricher<?,?> totaller = CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true), t, total, null, null);
             cluster.addEnricher(totaller);
         }
         
@@ -73,7 +73,7 @@ public class OpenGammaMonitoringAggregation {
             AttributeSensor<Number> t = (AttributeSensor<Number>) es.get(0);
             @SuppressWarnings("unchecked")
             AttributeSensor<Double> average = (AttributeSensor<Double>) es.get(1);
-            CustomAggregatingEnricher<?,?> averager = CustomAggregatingEnricher.newAveragingEnricher(MutableMap.of("allMembers", true), t, average);
+            CustomAggregatingEnricher<?,?> averager = CustomAggregatingEnricher.newAveragingEnricher(MutableMap.of("allMembers", true), t, average, null, null);
             cluster.addEnricher(averager);
         }
         
@@ -84,13 +84,13 @@ public class OpenGammaMonitoringAggregation {
         // at fabric, take the total for ViewProcesses and Reqs/Sec;
         // and take avg for reqLatency (note: simple avg -- assuming all regions equal)
         webFabric.addEnricher(CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true), 
-                OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT, OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT));
+                OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT, OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT, null, null));
         webFabric.addEnricher(CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true), 
-                DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW, DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW));
+                DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW, DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW, null, null));
         webFabric.addEnricher(CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true), 
-                OpenGammaMonitoringAggregation.OG_SERVER_COUNT, OpenGammaMonitoringAggregation.OG_SERVER_COUNT));
+                OpenGammaMonitoringAggregation.OG_SERVER_COUNT, OpenGammaMonitoringAggregation.OG_SERVER_COUNT, null, null));
         webFabric.addEnricher(CustomAggregatingEnricher.newAveragingEnricher(MutableMap.of("allMembers", true), 
-                HttpLatencyDetector.REQUEST_LATENCY_IN_SECONDS_IN_WINDOW, HttpLatencyDetector.REQUEST_LATENCY_IN_SECONDS_IN_WINDOW));
+                HttpLatencyDetector.REQUEST_LATENCY_IN_SECONDS_IN_WINDOW, HttpLatencyDetector.REQUEST_LATENCY_IN_SECONDS_IN_WINDOW, null, null));
     }
 
     public static void promoteKpis(Entity target, Entity webMetricsSource) {
