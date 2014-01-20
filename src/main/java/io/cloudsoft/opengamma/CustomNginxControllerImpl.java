@@ -1,7 +1,30 @@
 package io.cloudsoft.opengamma;
 
+import brooklyn.entity.Entity;
+import brooklyn.location.jclouds.JcloudsSshMachineLocation;
+import brooklyn.util.ssh.BashCommands;
+import brooklyn.util.time.Duration;
+import brooklyn.util.time.Time;
+import com.abiquo.server.core.cloud.VirtualMachineState;
+import com.abiquo.server.core.task.enums.TaskState;
+import com.google.common.base.Optional;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import io.cloudsoft.opengamma.locations.JcloudsInteroutePublicIpLocation;
 
+import org.jclouds.ContextBuilder;
+import org.jclouds.abiquo.AbiquoContext;
+import org.jclouds.abiquo.domain.cloud.VirtualMachine;
+import org.jclouds.abiquo.domain.enterprise.Enterprise;
+import org.jclouds.abiquo.domain.infrastructure.Datacenter;
+import org.jclouds.abiquo.domain.network.ExternalIp;
+import org.jclouds.abiquo.domain.network.ExternalNetwork;
+import org.jclouds.abiquo.domain.network.Ip;
+import org.jclouds.abiquo.domain.network.Network;
+import org.jclouds.abiquo.domain.task.AsyncTask;
+import org.jclouds.abiquo.features.services.MonitoringService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +35,12 @@ import brooklyn.location.Location;
 import brooklyn.location.LocationSpec;
 import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.management.ManagementContext;
+
+import javax.annotation.Nullable;
+import java.util.Arrays;
+import java.util.List;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 public class CustomNginxControllerImpl extends NginxControllerImpl {
 
@@ -51,7 +80,6 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
    public static final Effector<Void> RESTART = LIFECYCLE_TASKS.newRestartEffector();
    public static final Effector<Void> STOP = LIFECYCLE_TASKS.newStopEffector();
    
-   /*
    @Override
    protected void preStart() {
        super.preStart();
@@ -86,7 +114,7 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
     private void customizeEntity(Entity entity, AbiquoContext context) {
         log.info(">>> Customizing entity: " + entity.getEntityType().getSimpleName());
         try {
-            JcloudsSshMachineLocation machine = (JcloudsSshMachineLocation) Iterables.get(entity.getLocations(),0);
+            JcloudsSshMachineLocation machine = (JcloudsSshMachineLocation) Iterables.get(entity.getLocations(), 0);
             String machineName = machine.getNode().getName();
 
             Iterable<VirtualMachine> vms = context.getCloudService().listVirtualMachines();
@@ -100,7 +128,7 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
             
             Enterprise enterprise = context.getAdministrationService().getCurrentEnterprise();
             Datacenter datacenter = virtualMachine.getVirtualDatacenter().getDatacenter();
-            List<ExternalNetwork> externalNetworks = listExternalNetworks(enterprise, datacenter);
+            Iterable<ExternalNetwork> externalNetworks = listExternalNetworks(enterprise, datacenter);
             ExternalNetwork externalNetwork = tryFindExternalNetwork(externalNetworks, EXTERNAL_NETWORK_NAME_PREFIX);
             log.info(">>> Found externalNetwork " + externalNetwork + " in datacenter " + datacenter);
 
@@ -129,7 +157,7 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
       ensureVirtualMachineState(virtualMachine, VirtualMachineState.OFF, monitoringService);
       AsyncTask asyncTask = virtualMachine.setNics(externalNetwork, nics);
       monitoringService.getAsyncTaskMonitor().awaitCompletion(asyncTask);
-      Preconditions.checkState(asyncTask.getState() == TaskState.FINISHED_SUCCESSFULLY, "Error in task: "+asyncTask);
+      Preconditions.checkState(asyncTask.getState() == TaskState.FINISHED_SUCCESSFULLY, "Error in task: " + asyncTask);
       monitoringService.getVirtualMachineMonitor().awaitState(VirtualMachineState.OFF, virtualMachine);    
       ensureVirtualMachineState(virtualMachine, VirtualMachineState.ON, monitoringService);
       log.info(">>> Attached NICs : " + Iterables.toString(virtualMachine.listAttachedNics()) + " to virtualMachine(" + virtualMachine.getNameLabel() + ")");
@@ -142,12 +170,12 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
    }
 
    private ExternalIp tryFindExternalIp(ExternalNetwork externalNetwork) {
-      List<ExternalIp> listUnusedIps = externalNetwork.listUnusedIps();
-      if(listUnusedIps != null && listUnusedIps.isEmpty()) {
+      Iterable<ExternalIp> listUnusedIps = externalNetwork.listUnusedIps();
+      if(listUnusedIps != null && Iterables.isEmpty(listUnusedIps)) {
           throw new IllegalStateException("Cannot find an available externalIp in external network " +
                   externalNetwork);
       }
-      Optional<ExternalIp> optionalExternalIp = Optional.of(listUnusedIps.get(0));
+      Optional<ExternalIp> optionalExternalIp = Optional.of(Iterables.get(listUnusedIps, 0));
       if(optionalExternalIp.isPresent()) {
          return optionalExternalIp.get();
       } else {
@@ -156,7 +184,8 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
       }
    }
 
-   private ExternalNetwork tryFindExternalNetwork(List<ExternalNetwork> externalNetworks, final String externalNetworkName) {
+   private ExternalNetwork tryFindExternalNetwork(Iterable<ExternalNetwork> externalNetworks,
+                                                  final String externalNetworkName) {
        Optional<ExternalNetwork> optionalExternalNetwork = Iterables.tryFind(externalNetworks, new ExternalNetworkPredicate(externalNetworkName));
        if(optionalExternalNetwork.isPresent()) {
           return optionalExternalNetwork.get();
@@ -166,7 +195,7 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
        }
     }
    
-   private List<ExternalNetwork> listExternalNetworks(Enterprise enterprise, Datacenter datacenter) {
+   private Iterable<ExternalNetwork> listExternalNetworks(Enterprise enterprise, Datacenter datacenter) {
       return enterprise.listExternalNetworks(datacenter);
    }
    
@@ -195,5 +224,4 @@ public static final Logger log = LoggerFactory.getLogger(CustomNginxControllerIm
            };
         }
    }
-   */
 }
