@@ -34,7 +34,9 @@ import com.google.common.net.HostAndPort;
 public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGammaServer, UsesJmx {
 
     private static final Logger log = LoggerFactory.getLogger(OpenGammaServerImpl.class);
-    
+
+    private volatile JmxFeed jmxFeed;
+    private JmxFeed jmxMxBeanFeed;
     private HttpFeed httpFeed;
     private ActiveMQBroker broker;
     private PostgreSqlNode database;
@@ -87,10 +89,8 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
     @Override
     protected void postStart() {
         super.postStart();
-        
-            String ogJettyStatsMbeanName = "com.opengamma.jetty:service=HttpConnector";
-
-            JmxFeed.builder().entity(this).period(Duration.ONE_SECOND)
+        String ogJettyStatsMbeanName = "com.opengamma.jetty:service=HttpConnector";
+        jmxFeed = JmxFeed.builder().entity(this).period(Duration.ONE_SECOND)
                     .pollAttribute(new JmxAttributePollConfig<Boolean>(SERVICE_UP)
                             .objectName(ogJettyStatsMbeanName)
                             .attributeName("Running")
@@ -120,8 +120,8 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
                             .attributeName("TotalNodeCount"))
                             
                     .build();
-            
-        JavaAppUtils.connectMXBeanSensors(this);
+
+        jmxMxBeanFeed = JavaAppUtils.connectMXBeanSensors(this);
         JavaAppUtils.connectJavaAppServerPolicies(this);
         WebAppServiceMethods.connectWebAppServerPolicies(this);
 
@@ -152,6 +152,8 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
     protected void disconnectSensors() {
         super.disconnectSensors();
         if (httpFeed != null) httpFeed.stop();
+        if (jmxFeed != null) jmxFeed.stop();
+        if (jmxMxBeanFeed != null) jmxMxBeanFeed.stop();
     }
 
     /** HTTP port number for Jetty web service. */
