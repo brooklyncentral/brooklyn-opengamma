@@ -3,6 +3,7 @@ package io.cloudsoft.opengamma.server;
 import java.util.List;
 
 import brooklyn.enricher.CustomAggregatingEnricher;
+import brooklyn.enricher.Enrichers;
 import brooklyn.enricher.HttpLatencyDetector;
 import brooklyn.enricher.basic.SensorPropagatingEnricher;
 import brooklyn.enricher.basic.SensorTransformingEnricher;
@@ -47,39 +48,35 @@ public class OpenGammaMonitoringAggregation {
             new BasicAttributeSensor<Integer>(Integer.class, "opengamma.servers.count", "Number of active servers (web/calc) hosting OpenGamma");
 
     public static void aggregateOpenGammaServerSensors(Entity cluster) {
-        List<? extends List<? extends AttributeSensor<? extends Number>>> summingEnricherSetup = ImmutableList.of(
-                ImmutableList.of(PROCESSING_TIME_PER_SECOND_LAST, PROCESSING_TIME_PER_SECOND_LAST),
-                ImmutableList.of(PROCESSING_TIME_PER_SECOND_IN_WINDOW, PROCESSING_TIME_PER_SECOND_IN_WINDOW),
-                ImmutableList.of(VIEW_PROCESSES_COUNT, VIEW_PROCESSES_COUNT),
-                ImmutableList.of(PROCESS_CPU_TIME_FRACTION_IN_WINDOW, PROCESS_CPU_TIME_FRACTION_IN_WINDOW)
-        );
-        
-        List<? extends List<? extends AttributeSensor<? extends Number>>> averagingEnricherSetup = ImmutableList.of(
-                ImmutableList.of(PROCESSING_TIME_PER_SECOND_LAST, PROCESSING_TIME_PER_SECOND_LAST_PER_NODE),
-                ImmutableList.of(PROCESSING_TIME_PER_SECOND_IN_WINDOW, PROCESSING_TIME_PER_SECOND_IN_WINDOW_PER_NODE),
-                ImmutableList.of(VIEW_PROCESSES_COUNT, VIEW_PROCESSES_COUNT_PER_NODE),
-                ImmutableList.of(PROCESS_CPU_TIME_FRACTION_IN_WINDOW, PROCESS_CPU_TIME_FRACTION_IN_WINDOW_PER_NODE)
-        );
-        
-        for (List<? extends AttributeSensor<? extends Number>> es : summingEnricherSetup) {
-            AttributeSensor<? extends Number> t = es.get(0);
-            AttributeSensor<? extends Number> total = es.get(1);
-            CustomAggregatingEnricher<?,?> totaller = CustomAggregatingEnricher.newSummingEnricher(
-                    MutableMap.of("allMembers", true), t, total, null, null);
-           cluster.addEnricher(totaller);
-        }
-        
-        for (List<? extends AttributeSensor<? extends Number>> es : averagingEnricherSetup) {
-            @SuppressWarnings("unchecked")
-            AttributeSensor<Number> t = (AttributeSensor<Number>) es.get(0);
-            @SuppressWarnings("unchecked")
-            AttributeSensor<Double> average = (AttributeSensor<Double>) es.get(1);
-            CustomAggregatingEnricher<?,?> averager = CustomAggregatingEnricher.newAveragingEnricher(MutableMap.of
-                    ("allMembers", true), t, average, null, null);
-           cluster.addEnricher(averager);
-        }
-        
-        cluster.addEnricher(new SensorTransformingEnricher<Integer, Integer>(cluster, Changeable.GROUP_SIZE, OG_SERVER_COUNT, Functions.<Integer>identity()));
+
+        cluster.addEnricher(Enrichers.builder()
+                .aggregating(PROCESSING_TIME_PER_SECOND_LAST)
+                .fromMembers()
+                .publishing(PROCESSING_TIME_PER_SECOND_LAST_PER_NODE)
+                .computingAverage()
+                .defaultValueForUnreportedSensors(null)
+                .build());
+        cluster.addEnricher(Enrichers.builder()
+                .aggregating(PROCESSING_TIME_PER_SECOND_IN_WINDOW)
+                .fromMembers()
+                .publishing(PROCESSING_TIME_PER_SECOND_IN_WINDOW_PER_NODE)
+                .computingAverage()
+                .defaultValueForUnreportedSensors(null)
+                .build());
+        cluster.addEnricher(Enrichers.builder()
+                .aggregating(PROCESS_CPU_TIME_FRACTION_IN_WINDOW)
+                .fromMembers()
+                .publishing(PROCESS_CPU_TIME_FRACTION_IN_WINDOW_PER_NODE)
+                .computingAverage()
+                .defaultValueForUnreportedSensors(null)
+                .build());
+        cluster.addEnricher(Enrichers.builder()
+                .aggregating(VIEW_PROCESSES_COUNT)
+                .fromMembers()
+                .publishing(VIEW_PROCESSES_COUNT_PER_NODE)
+                .computingAverage()
+                .defaultValueForUnreportedSensors(0)
+                .build());
     }
 
     public static void aggregateOpenGammaClusterSensors(DynamicFabric webFabric) {
@@ -87,7 +84,7 @@ public class OpenGammaMonitoringAggregation {
         // and take avg for reqLatency (note: simple avg -- assuming all regions equal)
         webFabric.addEnricher(CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true),
                 OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT,
-                OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT, null, null));
+                OpenGammaMonitoringAggregation.VIEW_PROCESSES_COUNT, 0, null));
         webFabric.addEnricher(CustomAggregatingEnricher.newSummingEnricher(MutableMap.of("allMembers", true), 
                 DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW,
                 DynamicWebAppCluster.REQUESTS_PER_SECOND_IN_WINDOW, null, null));
