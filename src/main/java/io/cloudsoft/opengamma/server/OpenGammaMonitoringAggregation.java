@@ -49,6 +49,21 @@ public class OpenGammaMonitoringAggregation {
 
     public static void aggregateOpenGammaServerSensors(Entity cluster) {
 
+        List<? extends List<? extends AttributeSensor<? extends Number>>> summingEnricherSetup = ImmutableList.of(
+                ImmutableList.of(PROCESSING_TIME_PER_SECOND_LAST, PROCESSING_TIME_PER_SECOND_LAST),
+                ImmutableList.of(PROCESSING_TIME_PER_SECOND_IN_WINDOW, PROCESSING_TIME_PER_SECOND_IN_WINDOW),
+                ImmutableList.of(VIEW_PROCESSES_COUNT, VIEW_PROCESSES_COUNT),
+                ImmutableList.of(PROCESS_CPU_TIME_FRACTION_IN_WINDOW, PROCESS_CPU_TIME_FRACTION_IN_WINDOW)
+        );
+
+        for (List<? extends AttributeSensor<? extends Number>> es : summingEnricherSetup) {
+            AttributeSensor<? extends Number> t = es.get(0);
+            AttributeSensor<? extends Number> total = es.get(1);
+            CustomAggregatingEnricher<?, ?> totaller = CustomAggregatingEnricher.newSummingEnricher(
+                    MutableMap.of("allMembers", true), t, total, null, null);
+            cluster.addEnricher(totaller);
+        }
+
         cluster.addEnricher(Enrichers.builder()
                 .aggregating(PROCESSING_TIME_PER_SECOND_LAST)
                 .fromMembers()
