@@ -160,4 +160,5 @@ public class ElasticOpenGammaApplication extends AbstractApplication implements 
              
         Entities.dumpInfo(launcher.getApplications());
     }
+
 }

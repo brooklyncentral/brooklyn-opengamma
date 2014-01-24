@@ -70,7 +70,7 @@ public class OpenGammaClusterFactory implements EntityFactory<ControlledDynamicW
     public EntitySpec<ControlledDynamicWebAppCluster> getClusterSpec() {
         return EntitySpec.create(ControlledDynamicWebAppCluster.class)
                 .displayName("Load-Balanced Cluster")
-                .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, 2)
+                .configure(ControlledDynamicWebAppCluster.INITIAL_SIZE, minSize)
                 .configure(ControlledDynamicWebAppCluster.MEMBER_SPEC,
                         EntitySpec.create(SimulatedExamplesServer.class)
                                 .displayName("OpenGamma Server")

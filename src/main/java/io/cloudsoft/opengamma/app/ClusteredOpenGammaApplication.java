@@ -4,7 +4,10 @@ import brooklyn.catalog.CatalogConfig;
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.basic.ConfigKeys;
 import brooklyn.entity.basic.StartableApplication;
+import brooklyn.entity.proxying.ImplementedBy;
+import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
 
+@ImplementedBy(ElasticOpenGammaApplication.class)
 public interface ClusteredOpenGammaApplication extends StartableApplication {
 
     @CatalogConfig(label="Multi-Region", priority=1)
@@ -30,5 +33,4 @@ public interface ClusteredOpenGammaApplication extends StartableApplication {
     @CatalogConfig(label="Views-per-Server Target", priority=3.1)
     public static final ConfigKey<Double> VIEWS_PER_SERVER_SCALING_TARGET = ConfigKeys.newDoubleConfigKey(
             "opengamma.autoscaling.viewsPerServer.target", "Number of views per server to trigger scaling up", 1.0d);
-
 }
