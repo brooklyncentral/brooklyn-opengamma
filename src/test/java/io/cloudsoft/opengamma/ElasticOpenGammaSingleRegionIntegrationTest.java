@@ -38,7 +38,6 @@ public class ElasticOpenGammaSingleRegionIntegrationTest {
     @BeforeMethod(alwaysRun = true)
     public void setUp() throws Exception {
         localhostProvisioningLocation = new LocalhostMachineProvisioningLocation();
-        //app = ApplicationBuilder.newManagedApp(ClusteredOpenGammaApplication.class);
         app = ApplicationBuilder.newManagedApp(EntitySpec.create(ClusteredOpenGammaApplication.class)
                 .configure(ClusteredOpenGammaApplication.SUPPORT_MULTIREGION, false));
     }
