@@ -5,6 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Joiner;
 import com.google.common.base.Predicates;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
@@ -39,7 +43,9 @@ import brooklyn.util.time.Time;
 
 public class OpenGammaServerSshDriver extends JavaSoftwareProcessSshDriver implements OpenGammaServerDriver {
 
-    // sensor put on DB entity, when running distributed, not OG server 
+    private static final Logger LOG = LoggerFactory.getLogger(OpenGammaServerSshDriver.class);
+
+    // sensor put on DB entity, when running distributed, not OG server
     public static final AttributeSensor<Boolean> DB_INITIALISED =
             new BasicAttributeSensor<Boolean>(Boolean.class, "opengamma.database.initialised");
     
@@ -205,13 +211,13 @@ should effectively nullify the [activeMQ] section in the ini file
             .updateTaskAndFailOnNonZeroResultCode()
             .body.append("cp -r "+getInstallDir()+"/"+resolver.getUnpackedDirectoryName(getDownloadArchiveSubpath())+" "+ getOpenGammaDirectory())
             // create the dirs where we will put config files
-            .body.append("mkdir -p " + getTempDirectory())
-            .body.append("mkdir -p " + getCommonDirectory())
-            .body.append("mkdir -p " + getBrooklynConfigurationDirectory())
-            .body.append("mkdir -p " + getLibOverrideDirectory())
-            // scripts may try to access these before they are created
-            .body.append("mkdir -p " + getLogsDirectory())
-            .body.append("mkdir -p " + getDataDirectory())
+            .body.append("mkdir -p " + Joiner.on(" ").join(
+                    getTempDirectory(),
+                    getCommonDirectory(),
+                    getLogsDirectory(),
+                    getBrooklynConfigurationDirectory(),
+                    getLibOverrideDirectory(),
+                    getDataDirectory()))
             // install the postgres jar (FIXME should be done as install step ideally)
             .body.append(BashCommands.commandToDownloadUrlAs(
                 "http://jdbc.postgresql.org/download/postgresql-9.2-1003.jdbc4.jar",
@@ -282,14 +288,14 @@ should effectively nullify the [activeMQ] section in the ini file
                 machine.acquireMutex(database.getId(), "initialising database "+database);
                 if (database.getAttribute(DB_INITIALISED) != Boolean.TRUE) {
                     isInitial = true;
-                    log.info("{}: Initialising database on {}", entity, database);
+                    LOG.info("{}: Initialising database on {}", entity, database);
                     newScript("initialising OG db")
                             .updateTaskAndFailOnNonZeroResultCode()
                             .body.append("cd "+getRunDir(), "cd opengamma", "unset JAVA_HOME", "scripts/init-brooklyn-db.sh")
                             .execute();
                     ((EntityLocal)database).setAttribute(DB_INITIALISED, true);
                 } else {
-                    log.info("{}: Database on {} already initialised", entity, database);
+                    LOG.info("{}: Database on {} already initialised", entity, database);
                 }
             } catch (InterruptedException e) {
                 throw Throwables.propagate(e);
@@ -310,12 +316,12 @@ should effectively nullify the [activeMQ] section in the ini file
             // have seen errors if two cluster nodes start at the same time, subsequent may try to initialize database
             Boolean up = database.getAttribute(OpenGammaServer.DATABASE_INITIALIZED);
             if (Boolean.TRUE.equals(up)) {
-                log.debug("OG server "+getEntity()+" is not initial, but database is already up, so continuing");
+                LOG.debug("OG server " + getEntity() + " is not initial, but database is already up, so continuing");
             } else {
-                log.info("OG server "+getEntity()+" is not initial, waiting on database to be completely initialised");
+                LOG.info("OG server " + getEntity() + " is not initial, waiting on database to be completely initialised");
                 Tasks.setBlockingDetails("Waiting on OpenGamma database to be initialised");
                 Entities.submit(getEntity(), DependentConfiguration.attributeWhenReady(database, OpenGammaServer.DATABASE_INITIALIZED)).getUnchecked();
-                log.debug("OG server "+getEntity()+" continuing, as database is now completely initialised");
+                LOG.debug("OG server " + getEntity() + " continuing, as database is now completely initialised");
             }
         }
         
@@ -331,7 +337,7 @@ should effectively nullify the [activeMQ] section in the ini file
                 .execute();
         
         if (isInitial) {
-            log.info("Primary "+getEntity()+" has launched, will set database initialized to allow other servers to boot");
+            LOG.info("Primary " + getEntity() + " has launched, will set database initialized to allow other servers to boot");
             Time.sleep(Duration.TEN_SECONDS);
             ((EntityInternal)database).setAttribute(OpenGammaServer.DATABASE_INITIALIZED, true);
         }
@@ -356,87 +362,6 @@ should effectively nullify the [activeMQ] section in the ini file
 
     @Override
     public boolean installJava() {
-        try {
-            getLocation().acquireMutex("install:" + getLocation().getDisplayName(), "installing Java at " + getLocation());
-            log.debug("checking for java at " + entity + " @ " + getLocation());
-            int result = getLocation().execCommands("check java", Arrays.asList("which java"));
-            if (result == 0) {
-                log.debug("java detected at " + entity + " @ " + getLocation()+"; checking version");
-                ProcessTaskWrapper<Integer> versionTask = Entities.submit(getEntity(),
-                        SshTasks.newSshExecTaskFactory(getLocation(), "java -version").requiringExitCodeZero());
-                versionTask.get();
-                String jversion = versionTask.getStderr()+"\n"+versionTask.getStdout();
-                
-                int start=0;
-                while (start<jversion.length() && !Character.isDigit(jversion.charAt(start)))
-                    start++;
-                
-                if (start>=jversion.length()) {
-                    log.warn("Cannot parse java version string, assuming 1.7:\n"+jversion);
-                    return true;
-                }
-                int end = start+1;
-                while (end<jversion.length() && (Character.isDigit(jversion.charAt(end)) || "\"\'_-.".indexOf(jversion.charAt(end))>=0))
-                    end++;
-                String versionSubstring = jversion.substring(start, end);
-                log.debug("java version detected as "+versionSubstring+", from:\n"+jversion.trim());
-                if (versionSubstring.startsWith("1.7")) {
-                    log.debug("java 7 detected; not installing");
-                    return true;
-                } else {
-                    if (versionSubstring.startsWith("1.6") || versionSubstring.startsWith("1.5") || 
-                        /* heaven forbid */ versionSubstring.startsWith("1.4")) {
-                        log.debug("old version of java detected; installing new version");
-                    } else {
-                        log.debug("unrecognised/too-new version of java detected; not installing requested version");
-                        return true;
-                    }
-                }
-            } else {
-                log.debug("java not detected at " + entity + " @ " + getLocation() + ", installing (using BashCommands-based installJava7)");
-            }
-
-            result = newScript("INSTALL_OPENJDK").body.append(
-                BashCommands.installJava7OrFail()
-                // could use Jclouds routines -- but the following complains about yum-install not defined
-                // even though it is set as an alias (at the start of the first file)
-                //   new ResourceUtils(this).getResourceAsString("classpath:///functions/setupPublicCurl.sh"),
-                //   new ResourceUtils(this).getResourceAsString("classpath:///functions/installOpenJDK.sh"),
-                //   "installOpenJDK"
-                ).execute();
-            if (result==0)
-                return true;
-
-            // some failures might want a delay and a retry; 
-            // NOT confirmed this is needed, so:
-            // if we don't see the warning then remove, 
-            // or if we do see the warning then just remove this comment!  3 Sep 2013
-            log.warn("Unable to install Java at " + getLocation() + " for " + entity +
-                " (and Java not detected); invalid result "+result+". " + 
-                "Will retry.");
-            Time.sleep(Duration.TEN_SECONDS);
-
-            result = newScript("INSTALL_OPENJDK").body.append(
-                BashCommands.installJava7OrFail()
-                ).execute();
-            if (result==0) {
-                log.info("Succeeded installing Java at " + getLocation() + " for " + entity + " after retry.");
-                return true;
-            }
-            log.error("Unable to install Java at " + getLocation() + " for " + entity +
-                " (and Java not detected), including one retry; invalid result "+result+". " + 
-                "Processes may fail to start.");
-            return false;
-
-        } catch (Exception e) {
-            throw Throwables.propagate(e);
-        } finally {
-            getLocation().releaseMutex("install:" + getLocation().getDisplayName());
-        }
-
-        // //this works on ubuntu (surprising that jdk not in default repos!)
-        // "sudo add-apt-repository ppa:dlecan/openjdk",
-        // "sudo apt-get update",
-        // "sudo apt-get install -y --allow-unauthenticated openjdk-7-jdk"
+        return super.checkForAndInstallJava7();
     }
 }
