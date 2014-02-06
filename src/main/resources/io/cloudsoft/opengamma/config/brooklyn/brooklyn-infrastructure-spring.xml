@@ -17,6 +17,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
     <property name="acquireIncrement" value="1" />
     <property name="minConnectionsPerPartition" value="1" />
     <property name="maxConnectionsPerPartition" value="10" />
+    <property name="idleConnectionTestPeriodInSeconds" value="300" />
   </bean>
 
   <bean id="finDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
@@ -59,6 +60,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
     <property name="acquireIncrement" value="1" />
     <property name="minConnectionsPerPartition" value="1" />
     <property name="maxConnectionsPerPartition" value="10" />
+    <property name="idleConnectionTestPeriodInSeconds" value="300" />
   </bean>
 
   <bean id="htsDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
@@ -80,6 +82,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
     <property name="acquireIncrement" value="1" />
     <property name="minConnectionsPerPartition" value="1" />
     <property name="maxConnectionsPerPartition" value="10" />
+    <property name="idleConnectionTestPeriodInSeconds" value="300" />
   </bean>
 
   <bean id="batDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
@@ -107,6 +110,7 @@ http://www.springframework.org/schema/beans http://www.springframework.org/schem
     <property name="acquireIncrement" value="1" />
     <property name="minConnectionsPerPartition" value="1" />
     <property name="maxConnectionsPerPartition" value="10" />
+    <property name="idleConnectionTestPeriodInSeconds" value="300" />
   </bean>
 
   <bean id="userDbConnector" class="com.opengamma.util.db.DbConnectorFactoryBean">
