@@ -23,7 +23,7 @@ import brooklyn.entity.webapp.DynamicWebAppCluster;
 import brooklyn.entity.webapp.WebAppServiceConstants;
 import brooklyn.launcher.BrooklynLauncher;
 import brooklyn.util.CommandLineUtil;
-import io.cloudsoft.opengamma.CustomNginxControllerImpl;
+import io.cloudsoft.opengamma.locations.CustomNginxControllerImpl;
 import io.cloudsoft.opengamma.server.OpenGammaServer;
 import io.cloudsoft.opengamma.server.SimulatedExamplesServer;
 

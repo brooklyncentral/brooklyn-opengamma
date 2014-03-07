@@ -1,8 +1,8 @@
 package io.cloudsoft.opengamma.app;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import io.cloudsoft.opengamma.CustomNginxControllerImpl;
 import io.cloudsoft.opengamma.cluster.OpenGammaClusterFactory;
+import io.cloudsoft.opengamma.locations.CustomNginxControllerImpl;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
 
 import java.util.ArrayList;

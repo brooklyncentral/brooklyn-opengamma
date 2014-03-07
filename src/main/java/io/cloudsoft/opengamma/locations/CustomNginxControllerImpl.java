@@ -1,10 +1,11 @@
-package io.cloudsoft.opengamma;
+package io.cloudsoft.opengamma.locations;
 
 import brooklyn.entity.Entity;
 import brooklyn.location.jclouds.JcloudsSshMachineLocation;
 import brooklyn.util.ssh.BashCommands;
 import brooklyn.util.time.Duration;
 import brooklyn.util.time.Time;
+
 import com.abiquo.server.core.cloud.VirtualMachineState;
 import com.abiquo.server.core.task.enums.TaskState;
 import com.google.common.base.Optional;
@@ -12,7 +13,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
-import io.cloudsoft.opengamma.locations.JcloudsInteroutePublicIpLocation;
 
 import org.jclouds.ContextBuilder;
 import org.jclouds.abiquo.AbiquoContext;
@@ -37,6 +37,7 @@ import brooklyn.location.jclouds.JcloudsLocation;
 import brooklyn.management.ManagementContext;
 
 import javax.annotation.Nullable;
+
 import java.util.Arrays;
 import java.util.List;
 
