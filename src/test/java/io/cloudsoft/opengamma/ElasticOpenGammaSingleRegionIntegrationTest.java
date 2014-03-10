@@ -1,34 +1,26 @@
 package io.cloudsoft.opengamma;
 
-import brooklyn.entity.Entity;
-import brooklyn.entity.basic.ApplicationBuilder;
-import brooklyn.entity.basic.Entities;
-import brooklyn.entity.database.postgresql.PostgreSqlNode;
-import brooklyn.entity.database.postgresql.PostgreSqlSpecs;
-import brooklyn.entity.messaging.activemq.ActiveMQBroker;
-import brooklyn.entity.proxying.EntitySpec;
-import brooklyn.entity.trait.Startable;
-import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
-import brooklyn.entity.webapp.ControlledDynamicWebAppClusterImpl;
-import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
-import brooklyn.test.Asserts;
-import brooklyn.test.EntityTestUtils;
-import brooklyn.test.entity.TestApplication;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.inject.internal.util.$AbstractMapEntry;
+import static org.junit.Assert.assertTrue;
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import io.cloudsoft.opengamma.app.ClusteredOpenGammaApplication;
-import io.cloudsoft.opengamma.app.ElasticOpenGammaApplication;
 import io.cloudsoft.opengamma.server.OpenGammaMonitoringAggregation;
-import io.cloudsoft.opengamma.server.OpenGammaServer;
-import io.cloudsoft.opengamma.server.SimulatedExamplesServer;
+
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.junit.Assert.assertTrue;
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertFalse;
+import brooklyn.entity.Entity;
+import brooklyn.entity.basic.ApplicationBuilder;
+import brooklyn.entity.basic.Entities;
+import brooklyn.entity.proxying.EntitySpec;
+import brooklyn.entity.trait.Startable;
+import brooklyn.entity.webapp.ControlledDynamicWebAppCluster;
+import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
+import brooklyn.test.Asserts;
+import brooklyn.test.EntityTestUtils;
+
+import com.google.common.collect.ImmutableList;
 
 public class ElasticOpenGammaSingleRegionIntegrationTest {
 

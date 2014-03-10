@@ -33,8 +33,8 @@ import io.cloudsoft.opengamma.server.SimulatedExamplesServer;
 public class OpenGammaClusterFactory implements EntityFactory<ControlledDynamicWebAppCluster> {
     public static final Logger LOG = LoggerFactory.getLogger(OpenGammaClusterFactory.class);
 
-    final Entity broker;
-    final Entity database;
+    final ActiveMQBroker broker;
+    final PostgreSqlNode database;
     final boolean scalingEnabled;
     final double viewsPerServerScalingTarget;
     final int minSize;
