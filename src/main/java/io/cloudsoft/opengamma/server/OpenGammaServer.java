@@ -18,6 +18,7 @@ import brooklyn.event.basic.BasicAttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensorAndConfigKey;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.util.flags.SetFromFlag;
+import brooklyn.util.time.Duration;
 
 @ImplementedBy(OpenGammaServerImpl.class)
 public interface OpenGammaServer extends SoftwareProcess, WebAppService {
@@ -27,7 +28,7 @@ public interface OpenGammaServer extends SoftwareProcess, WebAppService {
             "opengamma.debug", "Whether to run in debug mode", true);
 
     // give it 2m to start up, by default
-    ConfigKey<Integer> START_TIMEOUT = ConfigKeys.newConfigKeyWithDefault(BrooklynConfigKeys.START_TIMEOUT, 2*60);
+    ConfigKey<Duration> START_TIMEOUT = ConfigKeys.newConfigKeyWithDefault(BrooklynConfigKeys.START_TIMEOUT, Duration.TWO_MINUTES);
 
     @SetFromFlag("version")
     ConfigKey<String> SUGGESTED_VERSION = ConfigKeys.newConfigKeyWithDefault(SoftwareProcess.SUGGESTED_VERSION, "2.1.0");
