@@ -53,9 +53,9 @@ public class OpenGammaServerImpl extends SoftwareProcessImpl implements OpenGamm
         return OpenGammaServerDriver.class;
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @Override
     protected Map<String,Object> obtainProvisioningFlags(MachineProvisioningLocation location) {
-        Map flags = super.obtainProvisioningFlags(location);
+        Map<String, Object> flags = super.obtainProvisioningFlags(location);
         flags.put("templateBuilder", new PortableTemplateBuilder()
             // need a beefy machine
             .os64Bit(true)
